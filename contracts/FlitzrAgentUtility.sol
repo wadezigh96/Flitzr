@@ -7,15 +7,16 @@ import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 /// @title Flitzr Agent Utility Token
-/// @notice Fixed-supply $FLITZR token plus a bounded agent-payment controller.
-/// @dev The agent role never receives an unrestricted minting privilege.
-///      Agents can only spend tokens that the treasury explicitly approves to this contract,
-///      and each agent has an on-chain spending limit enforced by this contract.
+/// @notice Fixed-supply $FLITZR token with an explicit, bounded agent-payment controller.
+/// @dev Agents never receive minting permission. The treasury must explicitly approve this
+///      contract before an enabled agent can spend treasury-held $FLITZR.
 contract FlitzrAgentUtility is ERC20, ERC20Permit, ERC20Burnable, AccessControl {
     bytes32 public constant AGENT_ADMIN_ROLE = keccak256("AGENT_ADMIN_ROLE");
     bytes32 public constant AGENT_ROLE = keccak256("AGENT_ROLE");
 
     uint256 public constant INITIAL_SUPPLY = 1_000_000_000 ether;
+
+    address public immutable treasury;
 
     struct AgentPolicy {
         uint256 limit;
@@ -38,13 +39,13 @@ contract FlitzrAgentUtility is ERC20, ERC20Permit, ERC20Burnable, AccessControl 
     {
         if (initialTreasury == address(0) || initialAdmin == address(0)) revert ZeroAddress();
 
+        treasury = initialTreasury;
         _grantRole(DEFAULT_ADMIN_ROLE, initialAdmin);
         _grantRole(AGENT_ADMIN_ROLE, initialAdmin);
         _mint(initialTreasury, INITIAL_SUPPLY);
     }
 
     /// @notice Configure an agent's cumulative spending ceiling.
-    /// @dev The treasury should approve this contract for the amount it intends agents to spend.
     function setAgentPolicy(address agent, uint256 limit, bool enabled)
         external
         onlyRole(AGENT_ADMIN_ROLE)
@@ -61,8 +62,8 @@ contract FlitzrAgentUtility is ERC20, ERC20Permit, ERC20Burnable, AccessControl 
         emit AgentPolicyUpdated(agent, limit, enabled);
     }
 
-    /// @notice Send $FLITZR from the approved treasury allowance to a recipient.
-    /// @dev The agent can never mint tokens and cannot spend above its configured ceiling.
+    /// @notice Pay a recipient from treasury-held $FLITZR using the treasury's explicit allowance.
+    /// @dev The agent can never mint tokens or bypass its configured spending ceiling.
     function agentPay(address recipient, uint256 amount, bytes32 reference)
         external
         onlyRole(AGENT_ROLE)
@@ -75,8 +76,13 @@ contract FlitzrAgentUtility is ERC20, ERC20Permit, ERC20Burnable, AccessControl 
         if (amount > remaining) revert AgentLimitExceeded(amount, remaining);
 
         policy.spent += amount;
-        _transfer(_msgSender(), recipient, amount);
+        _spendTreasury(recipient, amount);
         emit AgentPayment(msg.sender, recipient, amount, reference);
+    }
+
+    function _spendTreasury(address recipient, uint256 amount) internal {
+        _spendAllowance(treasury, address(this), amount);
+        _transfer(treasury, recipient, amount);
     }
 
     /// @notice Reset an agent's cumulative spend counter without changing its limit.
