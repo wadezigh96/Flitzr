@@ -1,3 +1,10 @@
+export type TypedDataPayload = {
+  domain: Record<string, unknown>
+  types: Record<string, Array<{ name: string; type: string }>>
+  primaryType: string
+  message: Record<string, unknown>
+}
+
 export type ExecutionState =
   | 'planned'
   | 'awaiting_approval'
@@ -21,6 +28,8 @@ export type ExecutionRecord = {
   updatedAt: string
   provider?: 'bankr' | 'definitive' | 'uniswap'
   quoteId?: string
+  quoteTypedData?: TypedDataPayload
+  providerOrderId?: string
   txHash?: string
   error?: string
 }
