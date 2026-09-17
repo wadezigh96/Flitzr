@@ -68,6 +68,27 @@ export async function findPersistentByIdempotency(key: string, ownerWallet: stri
   return row ? rowToExecution(row) : undefined
 }
 
+export async function findPersistentExecutions(ownerWallet: string, limit = 20) {
+  if (!process.env.POSTGRES_URL) return []
+  await ensureDatabase()
+  const safeLimit = Math.min(Math.max(Math.floor(limit), 1), 50)
+  const { rows } = await sql`SELECT * FROM flitzr_executions WHERE owner_wallet=${ownerWallet} ORDER BY created_at DESC LIMIT ${safeLimit}`
+  return rows.map(rowToExecution)
+}
+
+export async function findPersistentAudit(executionId: string) {
+  if (!process.env.POSTGRES_URL) return []
+  await ensureDatabase()
+  const { rows } = await sql`SELECT id,execution_id,event,timestamp,metadata FROM flitzr_audit_events WHERE execution_id=${executionId} ORDER BY timestamp ASC`
+  return rows.map(row => ({
+    id: String(row.id),
+    executionId: String(row.execution_id),
+    event: row.event as AuditEvent['event'],
+    timestamp: new Date(String(row.timestamp)).toISOString(),
+    metadata: row.metadata && typeof row.metadata === 'object' ? row.metadata as AuditEvent['metadata'] : undefined,
+  }))
+}
+
 export async function persistAudit(event: AuditEvent) {
   if (!process.env.POSTGRES_URL) return
   await ensureDatabase()
