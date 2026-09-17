@@ -36,6 +36,11 @@ export async function ensureDatabase() {
     timestamp TIMESTAMPTZ NOT NULL,
     metadata JSONB
   )`
+  await sql`CREATE TABLE IF NOT EXISTS flitzr_auth_nonces (
+    address TEXT PRIMARY KEY,
+    nonce TEXT NOT NULL,
+    expires_at TIMESTAMPTZ NOT NULL
+  )`
   return true
 }
 
