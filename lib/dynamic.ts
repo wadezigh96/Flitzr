@@ -18,7 +18,6 @@ export type DynamicWalletStatus =
   | {
       configured: true
       environmentId: string
-      /** Address of the server wallet used by the agent (when created). */
       address?: `0x${string}`
       walletId?: string
     }
@@ -33,10 +32,6 @@ function env() {
   return { authToken, environmentId }
 }
 
-/**
- * Returns whether Dynamic Server Wallets are configured for this deployment.
- * Safe to call from any API route; never throws.
- */
 export function getDynamicStatus(): DynamicWalletStatus {
   const { authToken, environmentId } = env()
   if (!authToken || !environmentId) {
@@ -49,17 +44,11 @@ export function getDynamicStatus(): DynamicWalletStatus {
   return { configured: true, environmentId }
 }
 
-/**
- * Lazy-load the Dynamic EVM Node client so the package is only required
- * when the env is set. This keeps local/dev builds working without the SDK.
- */
 async function getEvmClient() {
   const status = getDynamicStatus()
   if (!status.configured) throw new Error(status.reason)
 
   const { authToken, environmentId } = env()
-  // Dynamic package: @dynamic-labs-wallet/node-evm
-  // https://www.dynamic.xyz/docs/wallets/server-wallets/overview
   const { DynamicEvmWalletClient } = await import('@dynamic-labs-wallet/node-evm')
 
   const client = new DynamicEvmWalletClient({
@@ -70,11 +59,6 @@ async function getEvmClient() {
   return client
 }
 
-/**
- * Ensure a server wallet exists for the agent on Base (chain 8453).
- * Creates one if needed and returns its address.
- * Call this only after policy checks + (when required) user approval.
- */
 export async function ensureAgentServerWallet(): Promise<
   | { ok: false; error: string }
   | { ok: true; address: `0x${string}`; walletId: string }
@@ -85,32 +69,33 @@ export async function ensureAgentServerWallet(): Promise<
 
     const client = await getEvmClient()
 
-    // Prefer an existing wallet if the environment already has one.
-    // Dynamic server wallets are scoped to the developer account + environment.
+    // Keep this adapter tolerant of minor Dynamic SDK response-shape changes.
     const existing = await (client as any).getWalletAccounts?.().catch(() => null)
     if (Array.isArray(existing) && existing.length > 0) {
-      const first = existing[0]
-      const address = (first.accountAddress || first.address) as `0x${string}`
-      const walletId = String(first.walletId || first.id || address)
-      if (address?.startsWith('0x')) {
-        return { ok: true, address, walletId }
-      }
+      const first = existing[0] as any
+      const address = (first.accountAddress || first.address || first.walletMetadata?.address) as `0x${string}`
+      const walletId = String(first.walletId || first.id || first.walletMetadata?.id || address || '')
+      if (address?.startsWith('0x')) return { ok: true, address, walletId }
     }
 
-    // Create a new TWO_OF_TWO server wallet (standard for agent automation).
     const { ThresholdSignatureScheme } = await import('@dynamic-labs-wallet/node')
-    const result = await client.createWalletAccount({
+    const result = await (client as any).createWalletAccount({
       thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
-      backUpToClientShareService: true,
+      backUpToDynamic: true,
       onError: (err: Error) => {
         console.error('[dynamic] createWalletAccount error', err)
       },
     })
 
-    const address = (result.accountAddress || result.address) as `0x${string}`
-    const walletId = String(result.walletId || result.id || address)
+    const created = result as any
+    const metadata = created?.walletMetadata || {}
+    const address = (created?.accountAddress || created?.address || metadata?.address || metadata?.walletAddress) as `0x${string}`
+    const walletId = String(created?.walletId || created?.id || metadata?.walletId || metadata?.id || address || '')
     if (!address?.startsWith('0x')) {
-      return { ok: false, error: 'Dynamic returned an invalid wallet address.' }
+      return {
+        ok: false,
+        error: 'Dynamic created the wallet but did not return a readable EVM address in the current SDK response.',
+      }
     }
     return { ok: true, address, walletId }
   } catch (e) {
@@ -119,10 +104,6 @@ export async function ensureAgentServerWallet(): Promise<
   }
 }
 
-/**
- * Sign a message with the agent's Dynamic server wallet.
- * Used for x402 payment headers, SIWE-style agent auth, or policy-gated actions.
- */
 export async function signWithAgentWallet(
   message: string | Uint8Array,
 ): Promise<DynamicSignResult> {
@@ -131,7 +112,6 @@ export async function signWithAgentWallet(
     if (!wallet.ok) return { ok: false, error: wallet.error }
 
     const client = await getEvmClient()
-    // Sign via Dynamic MPC. Exact method name follows the Node EVM SDK.
     const signature = await (client as any).signMessage({
       accountAddress: wallet.address,
       message: typeof message === 'string' ? message : Buffer.from(message).toString('hex'),
@@ -148,10 +128,6 @@ export async function signWithAgentWallet(
   }
 }
 
-/**
- * High-level helper used by Flitzr execution / x402 flows.
- * Returns a short summary suitable for audit logs and the Runtime demo.
- */
 export async function agentPaymentReady(): Promise<{
   ready: boolean
   pattern: 'server-wallet'
