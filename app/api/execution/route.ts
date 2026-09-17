@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createExecution, normalizeWallet, transition } from '@/lib/execution'
-import { DEFAULT_POLICY, detectIntent, evaluatePolicy } from '@/lib/policy'
+import { DEFAULT_DEFENCIAL, detectIntent, evaluateDefencial } from '@/lib/defencial'
 import { auditEvent } from '@/lib/audit'
 import { executionStore } from '@/lib/ledger'
 import { readSession } from '@/lib/auth'
@@ -20,21 +20,21 @@ export async function POST(request: Request) {
     if (idempotencyKey) {
       if (idempotencyKey.length < 8 || idempotencyKey.length > 128) return NextResponse.json({ error: 'Idempotency-Key must be 8-128 characters.' }, { status: 400 })
       const existing = await executionStore.getByIdempotencyKey(idempotencyKey, ownerWallet)
-      if (existing) return NextResponse.json({ policy: null, execution: existing, previewOnly: true, idempotentReplay: true })
+      if (existing) return NextResponse.json({ defencial: null, execution: existing, previewOnly: true, idempotentReplay: true })
     }
 
     const intent = detectIntent(prompt.trim())
-    const policy = evaluatePolicy(intent, DEFAULT_POLICY)
+    const defencial = evaluateDefencial(intent, DEFAULT_DEFENCIAL)
     if (intent.amountUsd === null) return NextResponse.json({ error: 'A USD amount is required before creating an execution.' }, { status: 400 })
-    if (!policy.allowed) return NextResponse.json({ policy, execution: null }, { status: 403 })
+    if (!defencial.allowed) return NextResponse.json({ defencial, execution: null }, { status: 403 })
 
     const execution = createExecution({ intent: intent.type, amountUsd: intent.amountUsd, ownerWallet, provider: intent.type === 'dca' || intent.type === 'limit' ? 'definitive' : 'uniswap' })
-    const next = policy.needsApproval ? transition(execution, 'awaiting_approval') : execution
+    const next = defencial.needsApproval ? transition(execution, 'awaiting_approval') : execution
     await executionStore.put(next, idempotencyKey)
-    await executionStore.addAudit(auditEvent(next.id, 'policy_checked', { wallet: ownerWallet, amountUsd: intent.amountUsd, intent: intent.type }))
+    await executionStore.addAudit(auditEvent(next.id, 'defencial_checked', { wallet: ownerWallet, amountUsd: intent.amountUsd, intent: intent.type }))
     await executionStore.addAudit(auditEvent(next.id, 'planned', { wallet: ownerWallet, amountUsd: next.amountUsd, provider: next.provider ?? 'unknown' }))
-    if (policy.needsApproval) await executionStore.addAudit(auditEvent(next.id, 'approval_requested', { thresholdUsd: DEFAULT_POLICY.approvalAboveUsd }))
-    return NextResponse.json({ policy, execution: next, previewOnly: true })
+    if (defencial.needsApproval) await executionStore.addAudit(auditEvent(next.id, 'approval_requested', { thresholdUsd: DEFAULT_DEFENCIAL.approvalAboveUsd }))
+    return NextResponse.json({ defencial, execution: next, previewOnly: true })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Execution planning failed' }, { status: 500 })
   }
