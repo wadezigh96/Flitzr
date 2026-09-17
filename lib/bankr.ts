@@ -6,21 +6,71 @@ function apiKey() {
   return key
 }
 
-export async function bankrPrompt(prompt: string, threadId?: string) {
-  const response = await fetch(`${BANKR_BASE_URL}/agent/prompt`, {
-    method: 'POST',
-    headers: {'Content-Type': 'application/json', 'X-API-Key': apiKey()},
-    body: JSON.stringify({prompt, ...(threadId ? {threadId} : {})}),
+async function bankrFetch(path: string, init: RequestInit = {}) {
+  const response = await fetch(`${BANKR_BASE_URL}${path}`, {
+    ...init,
+    headers: {
+      'Content-Type': 'application/json',
+      'X-API-Key': apiKey(),
+      ...(init.headers || {}),
+    },
     cache: 'no-store',
+    signal: AbortSignal.timeout(15_000),
   })
-  if (!response.ok) throw new Error(`Bankr request failed: ${response.status}`)
-  return response.json()
+  const text = await response.text()
+  let data: unknown = text
+  try { data = JSON.parse(text) } catch {}
+  if (!response.ok) {
+    const detail = typeof data === 'object' && data !== null && 'message' in data ? String((data as { message?: unknown }).message) : `HTTP ${response.status}`
+    throw new Error(`Bankr request failed: ${detail}`)
+  }
+  return data
+}
+
+export async function bankrPrompt(prompt: string, threadId?: string) {
+  return bankrFetch('/agent/prompt', {
+    method: 'POST',
+    body: JSON.stringify({ prompt, ...(threadId ? { threadId } : {}) }),
+  })
 }
 
 export async function bankrJob(jobId: string) {
-  const response = await fetch(`${BANKR_BASE_URL}/agent/job/${jobId}`, {
-    headers: {'X-API-Key': apiKey()}, cache: 'no-store'
+  return bankrFetch(`/agent/job/${encodeURIComponent(jobId)}`)
+}
+
+export async function bankrWalletMe() {
+  return bankrFetch('/wallet/me')
+}
+
+export async function bankrPortfolio(chain = 'base') {
+  return bankrFetch(`/wallet/portfolio?chain=${encodeURIComponent(chain)}`)
+}
+
+export async function bankrSwapQuote(input: {
+  chain: 'base'
+  sellToken: string
+  buyToken: string
+  amount: string
+}) {
+  return bankrFetch('/wallet/swap-quote', {
+    method: 'POST',
+    body: JSON.stringify(input),
   })
-  if (!response.ok) throw new Error(`Bankr job failed: ${response.status}`)
-  return response.json()
+}
+
+export async function bankrTransfer(input: {
+  tokenAddress: string
+  recipientAddress: string
+  amount: string
+  isNativeToken?: boolean
+  chain?: 'base'
+}) {
+  return bankrFetch('/wallet/transfer', {
+    method: 'POST',
+    body: JSON.stringify({
+      ...input,
+      chain: input.chain ?? 'base',
+      isNativeToken: input.isNativeToken ?? false,
+    }),
+  })
 }
