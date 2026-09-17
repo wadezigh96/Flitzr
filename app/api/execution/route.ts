@@ -29,7 +29,7 @@ export async function POST(request: Request) {
     if (!policy.allowed) return NextResponse.json({ policy, execution: null }, { status: 403 })
 
     const execution = createExecution({ intent: intent.type, amountUsd: intent.amountUsd, ownerWallet, provider: intent.type === 'dca' || intent.type === 'limit' ? 'definitive' : 'uniswap' })
-    const next = policy.needsApproval ? transition(execution, 'awaiting_approval') : transition(execution, 'quoted')
+    const next = policy.needsApproval ? transition(execution, 'awaiting_approval') : execution
     await executionStore.put(next, idempotencyKey)
     await executionStore.addAudit(auditEvent(next.id, 'policy_checked', { wallet: ownerWallet, amountUsd: intent.amountUsd, intent: intent.type }))
     await executionStore.addAudit(auditEvent(next.id, 'planned', { wallet: ownerWallet, amountUsd: next.amountUsd, provider: next.provider ?? 'unknown' }))
