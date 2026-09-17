@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     const { walletAddress } = await request.json()
     const address = getAddress(walletAddress)
     const origin = new URL(request.url).origin
-    const nonce = createNonce(address)
+    const nonce = await createNonce(address)
     return NextResponse.json({ address, nonce, message: buildSiweMessage(origin, address, nonce) })
   } catch {
     return NextResponse.json({ error: 'A valid wallet address is required.' }, { status: 400 })
