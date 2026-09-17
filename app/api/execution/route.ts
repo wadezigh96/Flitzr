@@ -1,0 +1,33 @@
+import { NextResponse } from 'next/server'
+import { createExecution, transition } from '@/lib/execution'
+import { DEFAULT_POLICY, detectIntent, evaluatePolicy } from '@/lib/policy'
+
+export async function POST(request: Request) {
+  try {
+    const { prompt } = await request.json()
+    if (typeof prompt !== 'string' || !prompt.trim()) {
+      return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
+    }
+
+    const intent = detectIntent(prompt.trim())
+    const policy = evaluatePolicy(intent, DEFAULT_POLICY)
+    if (intent.amountUsd === null) {
+      return NextResponse.json({ error: 'A USD amount is required before creating an execution.' }, { status: 400 })
+    }
+    if (!policy.allowed) {
+      return NextResponse.json({ policy, execution: null }, { status: 403 })
+    }
+
+    const execution = createExecution({
+      intent: intent.type,
+      amountUsd: intent.amountUsd,
+      provider: intent.type === 'dca' || intent.type === 'limit' ? 'definitive' : 'uniswap',
+    })
+
+    const next = policy.needsApproval ? transition(execution, 'awaiting_approval') : transition(execution, 'quoted')
+    return NextResponse.json({ policy, execution: next, previewOnly: true })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Execution planning failed'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
