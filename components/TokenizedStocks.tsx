@@ -8,6 +8,8 @@ const BASE_CHAIN_HEX = '0x2105'
 const APPROVAL_USD = 25
 const DAILY_LIMIT_USD = 100
 
+const fallbackAssets: Asset[] = featured.map(symbol => ({ symbol, name: symbol, address: '', decimals: 18 }))
+
 export default function TokenizedStocks({ wallet }: { wallet: string }) {
   const [assets, setAssets] = useState<Asset[]>([])
   const [symbol, setSymbol] = useState('AAPLx')
@@ -29,14 +31,15 @@ export default function TokenizedStocks({ wallet }: { wallet: string }) {
     if (!ethereum) return
     let cancelled = false
     setBalancesLoading(true)
-    Promise.all(assets.map(async asset => {
+    Promise.all(assets.map(async (asset): Promise<Asset> => {
       try {
         const chainId = await ethereum.request({ method: 'eth_chainId' })
         if (String(chainId).toLowerCase() !== BASE_CHAIN_HEX) return { ...asset, balance: 0 }
         const data = '0x70a08231' + wallet.slice(2).padStart(64, '0')
         const raw = await ethereum.request({ method: 'eth_call', params: [{ to: asset.address, data }, 'latest'] })
         const units = BigInt(raw || '0'); const decimals = BigInt(asset.decimals)
-        const balance = Number(units / (10n ** decimals)) + Number(units % (10n ** decimals)) / Number(10n ** decimals)
+        const base = 10n ** decimals
+        const balance = Number(units / base) + Number(units % base) / Number(base)
         return { ...asset, balance }
       } catch { return { ...asset, balance: 0 } }
     })).then(next => { if (!cancelled) setAssets(next) }).finally(() => { if (!cancelled) setBalancesLoading(false) })
@@ -90,12 +93,14 @@ export default function TokenizedStocks({ wallet }: { wallet: string }) {
     } catch (error) { setError(error instanceof Error ? error.message : 'Token transfer failed.') } finally { setLoading(false) }
   }
 
+  const displayAssets = assets.length ? assets : fallbackAssets
+
   return <section className="card stocksCard">
     <div className="sectionHead"><div><div className="sectionKicker">03.5 · TOKENIZED EQUITIES</div><h2>Tokenized stock portfolio</h2></div><span className="liveSmall">BASE · ERC-20</span></div>
     <p className="muted">View supported tokenized equity balances and use the same wallet to send or receive. Flitzr never receives your private key.</p>
     <div className="stockPortfolio"><div><span>PORTFOLIO VALUE</span><strong>{portfolioValue > 0 ? `$${portfolioValue.toFixed(2)}` : balancesLoading ? 'Loading…' : '$0.00'}</strong></div><div><span>ASSETS</span><strong>{assets.length || featured.length}</strong></div><div><span>NETWORK</span><strong>Base</strong></div></div>
-    <div className="stockControls"><div className="stockField"><label>ASSET</label><select value={symbol} onChange={event => setSymbol(event.target.value)}>{(assets.length ? assets.filter(asset => featured.includes(asset.symbol)) : featured.map(symbol => ({ symbol, name: symbol, address: '', decimals: 18 }))).map(asset => <option key={asset.symbol} value={asset.symbol}>{asset.symbol} · {asset.name}</option>)}</select></div><div className="stockField"><label>ACTION</label><div className="segmented"><button className={direction === 'send' ? 'selected' : ''} onClick={() => setDirection('send')}>Send</button><button className={direction === 'receive' ? 'selected' : ''} onClick={() => setDirection('receive')}>Receive</button></div></div></div>
-    <div className="stockList">{(assets.length ? assets : featured.map(symbol => ({ symbol, name: symbol, address: '', decimals: 18 }))).map(asset => <button type="button" key={asset.symbol} onClick={() => setSymbol(asset.symbol)} className={asset.symbol === symbol ? 'stockRow selected' : 'stockRow'}><span className="ticker">{asset.symbol.replace('x', '')}</span><div><strong>{asset.symbol}</strong><small>{asset.name}</small></div><span>{asset.balance === undefined ? '—' : asset.balance.toFixed(4)}</span></button>)}</div>
+    <div className="stockControls"><div className="stockField"><label>ASSET</label><select value={symbol} onChange={event => setSymbol(event.target.value)}>{displayAssets.filter(asset => featured.includes(asset.symbol)).map(asset => <option key={asset.symbol} value={asset.symbol}>{asset.symbol} · {asset.name}</option>)}</select></div><div className="stockField"><label>ACTION</label><div className="segmented"><button className={direction === 'send' ? 'selected' : ''} onClick={() => setDirection('send')}>Send</button><button className={direction === 'receive' ? 'selected' : ''} onClick={() => setDirection('receive')}>Receive</button></div></div></div>
+    <div className="stockList">{displayAssets.map(asset => <button type="button" key={asset.symbol} onClick={() => setSymbol(asset.symbol)} className={asset.symbol === symbol ? 'stockRow selected' : 'stockRow'}><span className="ticker">{asset.symbol.replace('x', '')}</span><div><strong>{asset.symbol}</strong><small>{asset.name}</small></div><span>{asset.balance === undefined ? '—' : asset.balance.toFixed(4)}</span></button>)}</div>
     {direction === 'send' ? <div className="stockControls"><div className="stockField"><label>AMOUNT</label><input value={amount} onChange={event => setAmount(event.target.value)} inputMode="decimal" placeholder="0.10" /></div><div className="stockField"><label>RECIPIENT</label><input value={recipient} onChange={event => setRecipient(event.target.value)} placeholder="0x…" /></div></div> : <div className="receiveBox"><span>RECEIVE {symbol}</span><strong>{wallet || 'Connect wallet to show address'}</strong><small>Share this Base wallet address with the sender. Verify the selected asset and network before receiving.</small></div>}
     {selected?.price ? <div className="stockMeta">Reference price · ${selected.price.toFixed(2)} · Contract · {selected.address.slice(0, 8)}…{selected.address.slice(-6)} · Policy · ≤$100/day</div> : <div className="stockMeta">Asset contracts and public price data are resolved from xStocks. Only Base deployments are shown.</div>}
     {direction === 'send' && <button className="secondaryButton stockButton" onClick={sendToken} disabled={loading}>{loading ? 'Waiting for wallet…' : `Send ${symbol}`}</button>}
