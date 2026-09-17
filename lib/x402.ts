@@ -12,52 +12,35 @@ export type X402PaymentRequirement = {
   extra: { name: 'USDC'; version: '2' }
 }
 
+/**
+ * Compatibility helpers for displaying/inspecting x402 v2 requirements.
+ * Payment verification and settlement are handled by the official @x402/next
+ * middleware in proxy.ts, not by hand-rolled facilitator calls.
+ */
 export function createPaymentRequirement(input: {
   amountUsdc: string
   payTo: string
   resource: string
   description: string
-}): { x402Version: number; resource: { url: string; description: string; mimeType: string }; accepts: X402PaymentRequirement[]; extensions: Record<string, never> } {
+}) {
   if (!/^0x[a-fA-F0-9]{40}$/.test(input.payTo)) throw new Error('Invalid x402 payTo address')
   if (!/^\d+(\.\d{1,6})?$/.test(input.amountUsdc) || Number(input.amountUsdc) <= 0) throw new Error('Invalid x402 USDC amount')
 
   const [whole, fraction = ''] = input.amountUsdc.split('.')
-  const atomicAmount = `${whole}${fraction.padEnd(6, '0')}`.replace(/^0+(?=\d)/, '')
+  const amount = `${whole}${fraction.padEnd(6, '0')}`.replace(/^0+(?=\d)/, '')
 
   return {
     x402Version: X402_VERSION,
     resource: { url: input.resource, description: input.description, mimeType: 'application/json' },
     accepts: [{
-      scheme: 'exact', network: X402_NETWORK, amount: atomicAmount, asset: BASE_USDC,
-      payTo: input.payTo, maxTimeoutSeconds: 60, extra: { name: 'USDC', version: '2' },
+      scheme: 'exact' as const,
+      network: X402_NETWORK,
+      amount,
+      asset: BASE_USDC,
+      payTo: input.payTo,
+      maxTimeoutSeconds: 60,
+      extra: { name: 'USDC' as const, version: '2' as const },
     }],
     extensions: {},
   }
-}
-
-export function decodePaymentSignature(value: string | null): unknown | null {
-  if (!value) return null
-  try {
-    return JSON.parse(Buffer.from(value, 'base64').toString('utf8'))
-  } catch {
-    return null
-  }
-}
-
-export async function facilitatorRequest(path: '/verify' | '/settle', body: unknown) {
-  const base = process.env.X402_FACILITATOR_URL?.replace(/\/$/, '')
-  if (!base) return { configured: false, response: null }
-
-  const response = await fetch(`${base}${path}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-    cache: 'no-store',
-    signal: AbortSignal.timeout(10_000),
-  })
-
-  const text = await response.text()
-  let data: unknown = text
-  try { data = JSON.parse(text) } catch {}
-  return { configured: true, ok: response.ok, status: response.status, response: data }
 }
