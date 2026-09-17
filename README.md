@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Defencial-First Autonomous Financial Agent on Base**
+**First Defencial Autonomous Financial Agent on Base**
 
 [![Base](https://img.shields.io/badge/Base-Mainnet_8453-0052FF?style=for-the-badge&logo=coinbase&logoColor=white)](https://base.org)
 [![Runtime](https://img.shields.io/badge/Runtime_NYC-Sep_13–19_2026-FF4D00?style=for-the-badge)](https://runtime.nyc/handbook)
