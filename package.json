@@ -11,6 +11,7 @@
   "dependencies": {
     "@dynamic-labs-wallet/node": "^1.1.11",
     "@dynamic-labs-wallet/node-evm": "^1.1.11",
+    "@openzeppelin/contracts": "5.4.0",
     "@vercel/postgres": "^0.10.0",
     "@x402/core": "^2.26.0",
     "@x402/evm": "^2.25.0",
