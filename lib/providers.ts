@@ -12,6 +12,8 @@ export type QuoteRequest = {
   orderType: 'market' | 'dca' | 'limit'
   swapper?: string
   slippageTolerance?: number
+  durationSeconds?: number
+  limitNotionalPrice?: string
 }
 
 export type ProviderQuote = {
@@ -41,11 +43,7 @@ const uniswapProvider: ExecutionProvider = {
       slippageTolerance: request.slippageTolerance ?? 0.5,
     })
     const summary = summarizeUniswapQuote(raw)
-    return {
-      provider: 'uniswap',
-      quoteId: summary.requestId,
-      raw: summary,
-    }
+    return { provider: 'uniswap', quoteId: summary.requestId, raw: summary }
   },
 }
 
@@ -53,12 +51,7 @@ const bankrProvider: ExecutionProvider = {
   name: 'bankr',
   supports: orderType => orderType === 'market',
   async quote(request) {
-    const raw = await bankrSwapQuote({
-      chain: 'base',
-      sellToken: request.sellToken,
-      buyToken: request.buyToken,
-      amount: request.amount,
-    })
+    const raw = await bankrSwapQuote({ chain: 'base', sellToken: request.sellToken, buyToken: request.buyToken, amount: request.amount })
     return {
       provider: 'bankr',
       quoteId: typeof (raw as { quoteId?: unknown })?.quoteId === 'string' ? (raw as { quoteId: string }).quoteId : undefined,
@@ -79,6 +72,8 @@ const definitiveProvider: ExecutionProvider = {
       side: 'buy',
       qty: request.amount,
       orderType: request.orderType,
+      ...(request.durationSeconds ? { durationSeconds: request.durationSeconds } : {}),
+      ...(request.limitNotionalPrice ? { limitNotionalPrice: request.limitNotionalPrice } : {}),
     })
     const value = raw as { quoteId?: unknown; expiresAt?: unknown }
     return {
@@ -99,8 +94,6 @@ export function providerRegistry() {
 }
 
 export function selectProvider(orderType: QuoteRequest['orderType']): ExecutionProvider | null {
-  for (const provider of providerRegistry().values()) {
-    if (provider.supports(orderType)) return provider
-  }
+  for (const provider of providerRegistry().values()) if (provider.supports(orderType)) return provider
   return null
 }
