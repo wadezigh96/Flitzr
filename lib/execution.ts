@@ -16,6 +16,7 @@ export type ExecutionRecord = {
   chainId: 8453
   intent: 'dca' | 'limit' | 'market' | 'unknown'
   amountUsd: number
+  ownerWallet: string
   createdAt: string
   updatedAt: string
   provider?: 'bankr' | 'definitive' | 'uniswap'
@@ -31,10 +32,7 @@ const transitions: Record<ExecutionState, ExecutionState[]> = {
   quoted: ['signing', 'rejected', 'cancelled'],
   signing: ['submitted', 'rejected', 'failed', 'cancelled'],
   submitted: ['confirmed', 'failed'],
-  confirmed: [],
-  rejected: [],
-  failed: [],
-  cancelled: [],
+  confirmed: [], rejected: [], failed: [], cancelled: [],
 }
 
 export function canTransition(from: ExecutionState, to: ExecutionState) {
@@ -42,20 +40,16 @@ export function canTransition(from: ExecutionState, to: ExecutionState) {
 }
 
 export function transition(record: ExecutionRecord, next: ExecutionState): ExecutionRecord {
-  if (!canTransition(record.state, next)) {
-    throw new Error(`Invalid execution transition: ${record.state} -> ${next}`)
-  }
+  if (!canTransition(record.state, next)) throw new Error(`Invalid execution transition: ${record.state} -> ${next}`)
   return { ...record, state: next, updatedAt: new Date().toISOString() }
 }
 
-export function createExecution(input: Pick<ExecutionRecord, 'intent' | 'amountUsd' | 'provider'>): ExecutionRecord {
+export function normalizeWallet(value: unknown): string | null {
+  if (typeof value !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(value)) return null
+  return value.toLowerCase()
+}
+
+export function createExecution(input: Pick<ExecutionRecord, 'intent' | 'amountUsd' | 'provider' | 'ownerWallet'>): ExecutionRecord {
   const now = new Date().toISOString()
-  return {
-    id: `exec_${crypto.randomUUID()}`,
-    state: 'planned',
-    chainId: 8453,
-    createdAt: now,
-    updatedAt: now,
-    ...input,
-  }
+  return { id: `exec_${crypto.randomUUID()}`, state: 'planned', chainId: 8453, createdAt: now, updatedAt: now, ...input }
 }
