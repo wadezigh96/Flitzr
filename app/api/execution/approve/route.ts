@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { normalizeWallet, transition } from '@/lib/execution'
 import { auditEvent } from '@/lib/audit'
 import { executionStore } from '@/lib/ledger'
+import { readSession } from '@/lib/auth'
 
 export async function POST(request: Request) {
   try {
@@ -10,6 +11,10 @@ export async function POST(request: Request) {
     if (approval !== true) return NextResponse.json({ error: 'Explicit approval is required.' }, { status: 400 })
     const ownerWallet = normalizeWallet(walletAddress)
     if (!ownerWallet) return NextResponse.json({ error: 'A valid Base wallet is required for approval.' }, { status: 400 })
+    const cookie = request.headers.get('cookie') || ''
+    const token = cookie.split(';').map(v => v.trim()).find(v => v.startsWith('flitzr_session='))?.slice('flitzr_session='.length)
+    const session = readSession(token)
+    if (!session || session.address.toLowerCase() !== ownerWallet) return NextResponse.json({ error: 'Authenticate the connected wallet before approving an execution.' }, { status: 401 })
     const execution = executionStore.get(executionId)
     if (!execution) return NextResponse.json({ error: 'Execution not found' }, { status: 404 })
     if (execution.ownerWallet !== ownerWallet) return NextResponse.json({ error: 'This execution belongs to a different wallet.' }, { status: 403 })
