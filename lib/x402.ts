@@ -43,3 +43,21 @@ export function decodePaymentSignature(value: string | null): unknown | null {
     return null
   }
 }
+
+export async function facilitatorRequest(path: '/verify' | '/settle', body: unknown) {
+  const base = process.env.X402_FACILITATOR_URL?.replace(/\/$/, '')
+  if (!base) return { configured: false, response: null }
+
+  const response = await fetch(`${base}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(10_000),
+  })
+
+  const text = await response.text()
+  let data: unknown = text
+  try { data = JSON.parse(text) } catch {}
+  return { configured: true, ok: response.ok, status: response.status, response: data }
+}
