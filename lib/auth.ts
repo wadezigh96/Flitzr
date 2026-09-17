@@ -1,6 +1,7 @@
-import { createHmac, randomBytes } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 import { getAddress, verifyMessage } from 'viem'
 import { sql } from '@vercel/postgres'
+import { ensureDatabase } from '@/lib/db'
 
 const CHAIN_ID = 8453
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000
@@ -17,18 +18,17 @@ function secret() {
 
 export async function createNonce(address: string) {
   const normalized = getAddress(address)
+  if (!process.env.POSTGRES_URL) throw new Error('POSTGRES_URL is required for wallet authentication.')
   const nonce = randomBytes(16).toString('hex')
-  if (process.env.POSTGRES_URL) {
-    await sql`CREATE TABLE IF NOT EXISTS flitzr_auth_nonces (address TEXT PRIMARY KEY, nonce TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL)`
-    await sql`INSERT INTO flitzr_auth_nonces (address, nonce, expires_at) VALUES (${normalized.toLowerCase()}, ${nonce}, ${new Date(Date.now() + NONCE_TTL_MS).toISOString()}) ON CONFLICT (address) DO UPDATE SET nonce=EXCLUDED.nonce, expires_at=EXCLUDED.expires_at`
-  }
+  await ensureDatabase()
+  await sql`INSERT INTO flitzr_auth_nonces (address, nonce, expires_at) VALUES (${normalized.toLowerCase()}, ${nonce}, ${new Date(Date.now() + NONCE_TTL_MS).toISOString()}) ON CONFLICT (address) DO UPDATE SET nonce=EXCLUDED.nonce, expires_at=EXCLUDED.expires_at`
   return nonce
 }
 
 export async function consumeNonce(address: string, nonce: string) {
   const key = getAddress(address).toLowerCase()
   if (!process.env.POSTGRES_URL) return false
-  await sql`CREATE TABLE IF NOT EXISTS flitzr_auth_nonces (address TEXT PRIMARY KEY, nonce TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL)`
+  await ensureDatabase()
   const result = await sql`DELETE FROM flitzr_auth_nonces WHERE address=${key} AND nonce=${nonce} AND expires_at > NOW() RETURNING address`
   return result.rows.length > 0
 }
@@ -64,10 +64,16 @@ export function readSession(token: string | undefined) {
   const [payload, signature] = token.split('.')
   if (!payload || !signature) return null
   const expected = createHmac('sha256', secret()).update(payload).digest('base64url')
-  if (signature !== expected) return null
+  try {
+    const actual = Buffer.from(signature)
+    const expectedBuffer = Buffer.from(expected)
+    if (actual.length !== expectedBuffer.length || !timingSafeEqual(actual, expectedBuffer)) return null
+  } catch {
+    return null
+  }
   try {
     const session = JSON.parse(Buffer.from(payload, 'base64url').toString()) as Session
-    if (session.expiresAt < Date.now()) return null
+    if (!session.address || !Number.isFinite(session.expiresAt) || session.expiresAt < Date.now()) return null
     return session
   } catch {
     return null
