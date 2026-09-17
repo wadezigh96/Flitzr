@@ -1,3 +1,5 @@
+import { bankrSwapQuote } from '@/lib/bankr'
+import { definitiveQuote } from '@/lib/definitive'
 import { uniswapQuote, summarizeUniswapQuote } from '@/lib/uniswap'
 
 export type ProviderName = 'bankr' | 'definitive' | 'uniswap'
@@ -42,14 +44,58 @@ const uniswapProvider: ExecutionProvider = {
     return {
       provider: 'uniswap',
       quoteId: summary.requestId,
-      estimatedOutput: summary.quote?.output?.amount ?? summary.quote?.output?.endAmount,
       raw: summary,
     }
   },
 }
 
+const bankrProvider: ExecutionProvider = {
+  name: 'bankr',
+  supports: orderType => orderType === 'market',
+  async quote(request) {
+    const raw = await bankrSwapQuote({
+      chain: 'base',
+      sellToken: request.sellToken,
+      buyToken: request.buyToken,
+      amount: request.amount,
+    })
+    return {
+      provider: 'bankr',
+      quoteId: typeof (raw as { quoteId?: unknown })?.quoteId === 'string' ? (raw as { quoteId: string }).quoteId : undefined,
+      raw,
+    }
+  },
+}
+
+const definitiveProvider: ExecutionProvider = {
+  name: 'definitive',
+  supports: orderType => orderType === 'dca' || orderType === 'limit',
+  async quote(request) {
+    const raw = await definitiveQuote({
+      targetChain: 'base',
+      contraChain: 'base',
+      targetAsset: request.buyToken,
+      contraAsset: request.sellToken,
+      side: 'buy',
+      qty: request.amount,
+      orderType: request.orderType,
+    })
+    const value = raw as { quoteId?: unknown; expiresAt?: unknown }
+    return {
+      provider: 'definitive',
+      quoteId: typeof value.quoteId === 'string' ? value.quoteId : undefined,
+      expiresAt: typeof value.expiresAt === 'string' ? value.expiresAt : undefined,
+      raw,
+    }
+  },
+}
+
 export function providerRegistry() {
-  return new Map<ProviderName, ExecutionProvider>([['uniswap', uniswapProvider]])
+  return new Map<ProviderName, ExecutionProvider>([
+    ['bankr', bankrProvider],
+    ['definitive', definitiveProvider],
+    ['uniswap', uniswapProvider],
+  ])
 }
 
 export function selectProvider(orderType: QuoteRequest['orderType']): ExecutionProvider | null {
