@@ -1,13 +1,7 @@
 import { NextResponse } from 'next/server'
 import { executionStore } from '@/lib/ledger'
 import { normalizeWallet } from '@/lib/execution'
-import { readSession } from '@/lib/auth'
-
-function sessionFromRequest(request: Request) {
-  const cookie = request.headers.get('cookie') || ''
-  const token = cookie.split(';').map(v => v.trim()).find(v => v.startsWith('flitzr_session='))?.slice('flitzr_session='.length)
-  return readSession(token)
-}
+import { requirePrivyWallet } from '@/lib/privy'
 
 export async function POST(request: Request) {
   try {
@@ -15,9 +9,7 @@ export async function POST(request: Request) {
     const executionId = typeof body.executionId === 'string' ? body.executionId : ''
     const walletAddress = normalizeWallet(body.walletAddress)
     if (!executionId || !walletAddress) return NextResponse.json({ error: 'executionId and a valid Base wallet are required.' }, { status: 400 })
-
-    const session = sessionFromRequest(request)
-    if (!session || session.address.toLowerCase() !== walletAddress) return NextResponse.json({ error: 'Authenticate the connected wallet first.' }, { status: 401 })
+    if (!await requirePrivyWallet(request, walletAddress)) return NextResponse.json({ error: 'Authenticate the connected wallet with Privy first.' }, { status: 401 })
 
     const execution = await executionStore.get(executionId)
     if (!execution) return NextResponse.json({ error: 'Execution not found.' }, { status: 404 })
