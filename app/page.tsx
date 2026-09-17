@@ -163,7 +163,7 @@ export default function Home() {
   return (
     <main className="shell">
       <nav className="nav">
-        <div className="brandWrap"><div className="brandMark">F</div><div><div className="brand">FLITZR</div><div className="brandSub">DEFENCIAL · AUTONOMOUS FINANCE</div></div></div>
+        <div className="brandWrap"><div className="brandMark">F</div><div><div className="brand">FLITZR</div><div className="brandSub">DEFENCIAL AGENTIC FINANCE</div></div></div>
         <div className="navRight"><div className="live"><span /> BASE MAINNET · LIVE</div><button className="walletButton" onClick={authenticated ? logoutWallet : connectWallet}>{authenticated ? `${shortWallet} · Sign out` : wallet ? 'Sign in wallet' : shortWallet}</button></div>
       </nav>
 
@@ -225,16 +225,11 @@ export default function Home() {
         <section className="card timelineCard">
           <div className="sectionHead"><div><div className="sectionKicker">04 · OPERATIONS</div><h2>Execution timeline</h2></div><span className="stateBadge">{result.execution.state.replace('_', ' ')}</span></div>
           <div className="timeline">{states.map((state, index) => <div className={`step ${index <= stateIndex ? 'active' : ''}`} key={state}><span className="dot" /><div><strong>{state.replace('_', ' ')}</strong><small>{state === 'awaiting_approval' ? 'Defencial approval gate' : state === 'quoted' ? 'Provider quote prepared' : state === 'signing' ? 'Wallet signing in progress' : state === 'submitted' ? 'Provider accepted the order' : state === 'confirmed' ? 'Chain confirmation' : 'Execution state'}</small></div></div>)}</div>
-          <p className="previewNote">Signing is an explicit wallet action. Flitzr never receives or stores your private key.</p>
+          <p className="previewNote">Signing is an explicit wallet action. Flitzr never receives or stores private keys.</p>
         </section>
       )}
 
-      <section className="lowerGrid">
-        <div className="card activityCard"><div className="sectionHead"><div><div className="sectionKicker">05 · AUDIT</div><h2>Activity</h2></div><span className="liveSmall">SESSION</span></div><div className="activity"><div><span className="activityDot green" /><div><strong>Defencial engine</strong><span>{result ? 'Request evaluated against Base guardrails' : 'Waiting for a command'}</span></div><time>NOW</time></div><div><span className="activityDot" /><div><strong>Execution layer</strong><span>{result?.execution ? `${result.execution.provider || 'provider'} · ${result.execution.state}` : 'No execution created'}</span></div><time>—</time></div><div><span className="activityDot" /><div><strong>Settlement</strong><span>{result?.execution?.state === 'submitted' ? 'Provider submission recorded' : 'Broadcast disabled until explicit signing'}</span></div><time>{result?.execution?.state === 'submitted' ? 'LIVE' : 'SAFE'}</time></div></div></div>
-        <div className="card treasuryCard"><div className="sectionHead"><div><div className="sectionKicker">06 · TREASURY</div><h2>Wallet session</h2></div><span className="shield">✓</span></div><div className="treasuryValue">{wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Not connected'}</div><p className="muted">{authenticated ? 'Wallet authenticated with signed SIWE. Sponsor API keys never enter the client.' : 'Connect and sign in before planning an execution.'}</p><button className="secondaryButton" onClick={authenticated ? logoutWallet : connectWallet}>{authenticated ? 'End wallet session' : 'Connect & sign in'}</button></div>
-      </section>
-
-      <footer><div>FLITZR <span>·</span> RUNTIME AGENT WEEK BUILD</div><div>DEFENCIAL · SIGNATURE-GATED · BASE</div></footer>
+      <footer><span>FLITZR · DEFENCIAL · SIGNATURE-GATED · BASE</span><span>Autonomous finance, with explicit user control.</span></footer>
     </main>
   )
 }
