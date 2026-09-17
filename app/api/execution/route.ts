@@ -19,21 +19,22 @@ export async function POST(request: Request) {
     const idempotencyKey = request.headers.get('Idempotency-Key')?.trim()
     if (idempotencyKey) {
       if (idempotencyKey.length < 8 || idempotencyKey.length > 128) return NextResponse.json({ error: 'Idempotency-Key must be 8-128 characters.' }, { status: 400 })
-      const existing = executionStore.getByIdempotencyKey(idempotencyKey, ownerWallet)
+      const existing = await executionStore.getByIdempotencyKey(idempotencyKey, ownerWallet)
       if (existing) return NextResponse.json({ policy: null, execution: existing, previewOnly: true, idempotentReplay: true })
     }
 
     const intent = detectIntent(prompt.trim())
     const policy = evaluatePolicy(intent, DEFAULT_POLICY)
-    executionStore.addAudit(auditEvent('pending', 'policy_checked', { wallet: ownerWallet, amountUsd: intent.amountUsd ?? 0, intent: intent.type }))
     if (intent.amountUsd === null) return NextResponse.json({ error: 'A USD amount is required before creating an execution.' }, { status: 400 })
     if (!policy.allowed) return NextResponse.json({ policy, execution: null }, { status: 403 })
 
+    const pendingAudit = auditEvent('pending', 'policy_checked', { wallet: ownerWallet, amountUsd: intent.amountUsd, intent: intent.type })
     const execution = createExecution({ intent: intent.type, amountUsd: intent.amountUsd, ownerWallet, provider: intent.type === 'dca' || intent.type === 'limit' ? 'definitive' : 'uniswap' })
     const next = policy.needsApproval ? transition(execution, 'awaiting_approval') : transition(execution, 'quoted')
-    executionStore.put(next, idempotencyKey)
-    executionStore.addAudit(auditEvent(next.id, 'planned', { wallet: ownerWallet, amountUsd: next.amountUsd, provider: next.provider ?? 'unknown' }))
-    if (policy.needsApproval) executionStore.addAudit(auditEvent(next.id, 'approval_requested', { thresholdUsd: DEFAULT_POLICY.approvalThresholdUsd }))
+    await executionStore.put(next, idempotencyKey)
+    await executionStore.addAudit({ ...pendingAudit, executionId: next.id })
+    await executionStore.addAudit(auditEvent(next.id, 'planned', { wallet: ownerWallet, amountUsd: next.amountUsd, provider: next.provider ?? 'unknown' }))
+    if (policy.needsApproval) await executionStore.addAudit(auditEvent(next.id, 'approval_requested', { thresholdUsd: DEFAULT_POLICY.approvalThresholdUsd }))
     return NextResponse.json({ policy, execution: next, previewOnly: true })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Execution planning failed' }, { status: 500 })
