@@ -3,7 +3,7 @@ import { createExecution, normalizeWallet, transition } from '@/lib/execution'
 import { DEFAULT_DEFENCIAL, detectIntent, evaluateDefencial } from '@/lib/defencial'
 import { auditEvent } from '@/lib/audit'
 import { executionStore } from '@/lib/ledger'
-import { readSession } from '@/lib/auth'
+import { requirePrivyWallet } from '@/lib/privy'
 
 export async function POST(request: Request) {
   try {
@@ -11,10 +11,7 @@ export async function POST(request: Request) {
     if (typeof prompt !== 'string' || !prompt.trim()) return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
     const ownerWallet = normalizeWallet(walletAddress)
     if (!ownerWallet) return NextResponse.json({ error: 'Connect a valid Base wallet before creating an execution.' }, { status: 400 })
-    const cookie = request.headers.get('cookie') || ''
-    const token = cookie.split(';').map(v => v.trim()).find(v => v.startsWith('flitzr_session='))?.slice('flitzr_session='.length)
-    const session = readSession(token)
-    if (!session || session.address.toLowerCase() !== ownerWallet) return NextResponse.json({ error: 'Authenticate the connected wallet before creating an execution.' }, { status: 401 })
+    if (!await requirePrivyWallet(request, ownerWallet)) return NextResponse.json({ error: 'Authenticate the connected wallet with Privy before creating an execution.' }, { status: 401 })
 
     const idempotencyKey = request.headers.get('Idempotency-Key')?.trim()
     if (idempotencyKey) {
