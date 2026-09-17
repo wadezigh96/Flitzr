@@ -51,6 +51,8 @@ export async function POST(request: Request) {
       orderType,
       swapper: walletAddress,
       slippageTolerance: typeof body.slippageTolerance === 'number' ? body.slippageTolerance : 0.5,
+      ...(orderType === 'dca' ? { durationSeconds: 7 * 24 * 60 * 60 } : {}),
+      ...(orderType === 'limit' ? { limitNotionalPrice: body.limitNotionalPrice as string } : {}),
     })
 
     let next = execution
