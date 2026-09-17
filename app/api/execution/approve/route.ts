@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getExecution, transition } from '@/lib/execution'
+import { transition } from '@/lib/execution'
 import { executionStore } from '@/lib/ledger'
 
 export async function POST(request: Request) {
@@ -7,10 +7,10 @@ export async function POST(request: Request) {
     const { executionId, approval } = await request.json()
     if (typeof executionId !== 'string' || !executionId) return NextResponse.json({ error: 'executionId is required' }, { status: 400 })
     if (approval !== true) return NextResponse.json({ error: 'Explicit approval is required.' }, { status: 400 })
-    const execution = getExecution(executionId)
+    const execution = executionStore.get(executionId)
     if (!execution) return NextResponse.json({ error: 'Execution not found' }, { status: 404 })
     const approved = transition(execution, 'approved')
-    executionStore.put(approved)
+    executionStore.update(approved)
     return NextResponse.json({ execution: approved, previewOnly: true })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Approval failed' }, { status: 409 })
