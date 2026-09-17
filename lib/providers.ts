@@ -35,13 +35,7 @@ const uniswapProvider: ExecutionProvider = {
   supports: orderType => orderType === 'market',
   async quote(request) {
     if (!request.swapper) throw new Error('A swapper wallet is required for a Uniswap quote.')
-    const raw = await uniswapQuote({
-      tokenIn: request.sellToken,
-      tokenOut: request.buyToken,
-      amount: request.amount,
-      swapper: request.swapper,
-      slippageTolerance: request.slippageTolerance ?? 0.5,
-    })
+    const raw = await uniswapQuote({ tokenIn: request.sellToken, tokenOut: request.buyToken, amount: request.amount, swapper: request.swapper, slippageTolerance: request.slippageTolerance ?? 0.5 })
     const summary = summarizeUniswapQuote(raw)
     return { provider: 'uniswap', quoteId: summary.requestId, raw: summary }
   },
@@ -52,11 +46,7 @@ const bankrProvider: ExecutionProvider = {
   supports: orderType => orderType === 'market',
   async quote(request) {
     const raw = await bankrSwapQuote({ chain: 'base', sellToken: request.sellToken, buyToken: request.buyToken, amount: request.amount })
-    return {
-      provider: 'bankr',
-      quoteId: typeof (raw as { quoteId?: unknown })?.quoteId === 'string' ? (raw as { quoteId: string }).quoteId : undefined,
-      raw,
-    }
+    return { provider: 'bankr', quoteId: typeof (raw as { quoteId?: unknown })?.quoteId === 'string' ? (raw as { quoteId: string }).quoteId : undefined, raw }
   },
 }
 
@@ -64,36 +54,22 @@ const definitiveProvider: ExecutionProvider = {
   name: 'definitive',
   supports: orderType => orderType === 'dca' || orderType === 'limit',
   async quote(request) {
-    const raw = await definitiveQuote({
-      targetChain: 'base',
-      contraChain: 'base',
-      targetAsset: request.buyToken,
-      contraAsset: request.sellToken,
-      side: 'buy',
-      qty: request.amount,
-      orderType: request.orderType,
-      ...(request.durationSeconds ? { durationSeconds: request.durationSeconds } : {}),
-      ...(request.limitNotionalPrice ? { limitNotionalPrice: request.limitNotionalPrice } : {}),
-    })
+    const raw = await definitiveQuote({ targetChain: 'base', contraChain: 'base', targetAsset: request.buyToken, contraAsset: request.sellToken, side: 'buy', qty: request.amount, orderType: request.orderType, ...(request.durationSeconds ? { durationSeconds: request.durationSeconds } : {}), ...(request.limitNotionalPrice ? { limitNotionalPrice: request.limitNotionalPrice } : {}) })
     const value = raw as { quoteId?: unknown; expiresAt?: unknown }
-    return {
-      provider: 'definitive',
-      quoteId: typeof value.quoteId === 'string' ? value.quoteId : undefined,
-      expiresAt: typeof value.expiresAt === 'string' ? value.expiresAt : undefined,
-      raw,
-    }
+    return { provider: 'definitive', quoteId: typeof value.quoteId === 'string' ? value.quoteId : undefined, expiresAt: typeof value.expiresAt === 'string' ? value.expiresAt : undefined, raw }
   },
 }
 
 export function providerRegistry() {
-  return new Map<ProviderName, ExecutionProvider>([
-    ['bankr', bankrProvider],
-    ['definitive', definitiveProvider],
-    ['uniswap', uniswapProvider],
-  ])
+  return new Map<ProviderName, ExecutionProvider>([['bankr', bankrProvider], ['definitive', definitiveProvider], ['uniswap', uniswapProvider]])
 }
 
-export function selectProvider(orderType: QuoteRequest['orderType']): ExecutionProvider | null {
-  for (const provider of providerRegistry().values()) if (provider.supports(orderType)) return provider
+export function selectProvider(orderType: QuoteRequest['orderType'], preferred?: ProviderName): ExecutionProvider | null {
+  const registry = providerRegistry()
+  if (preferred) {
+    const candidate = registry.get(preferred)
+    if (candidate?.supports(orderType)) return candidate
+  }
+  for (const provider of registry.values()) if (provider.supports(orderType)) return provider
   return null
 }
