@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from 'react'
 type Asset = { symbol: string; name: string; address: string; decimals: number; price?: number; balance?: number }
 const featured = ['AAPLx', 'NVDAx', 'TSLAx', 'MSFTx', 'AMZNx', 'METAx']
 const BASE_CHAIN_HEX = '0x2105'
+const APPROVAL_USD = 25
+const DAILY_LIMIT_USD = 100
 
 export default function TokenizedStocks({ wallet }: { wallet: string }) {
   const [assets, setAssets] = useState<Asset[]>([])
@@ -29,6 +31,8 @@ export default function TokenizedStocks({ wallet }: { wallet: string }) {
     setBalancesLoading(true)
     Promise.all(assets.map(async asset => {
       try {
+        const chainId = await ethereum.request({ method: 'eth_chainId' })
+        if (String(chainId).toLowerCase() !== BASE_CHAIN_HEX) return { ...asset, balance: 0 }
         const data = '0x70a08231' + wallet.slice(2).padStart(64, '0')
         const raw = await ethereum.request({ method: 'eth_call', params: [{ to: asset.address, data }, 'latest'] })
         const units = BigInt(raw || '0'); const decimals = BigInt(asset.decimals)
@@ -41,6 +45,7 @@ export default function TokenizedStocks({ wallet }: { wallet: string }) {
 
   const selected = useMemo(() => assets.find(asset => asset.symbol === symbol), [assets, symbol])
   const portfolioValue = useMemo(() => assets.reduce((sum, asset) => sum + (asset.balance || 0) * (asset.price || 0), 0), [assets])
+  const transferUsd = selected?.price && Number(amount) > 0 ? Number(amount) * selected.price : null
 
   async function sendToken() {
     setError(''); setMessage('')
@@ -50,6 +55,14 @@ export default function TokenizedStocks({ wallet }: { wallet: string }) {
     if (!Number.isFinite(Number(amount))) return setError('Enter a valid amount.')
     if (Number(amount) > (selected.balance || 0)) return setError(`Insufficient ${selected.symbol} balance.`)
     if (!/^0x[a-fA-F0-9]{40}$/.test(recipient)) return setError('Enter a valid recipient wallet address.')
+    if (transferUsd !== null && transferUsd > DAILY_LIMIT_USD) return setError(`Transfer exceeds the $${DAILY_LIMIT_USD} policy budget.`)
+    if (transferUsd !== null && transferUsd > APPROVAL_USD) {
+      const approved = window.confirm(`Flitzr policy approval required.\n\nSend ${amount} ${selected.symbol} (~$${transferUsd.toFixed(2)}) to ${recipient}?\n\nThis exceeds the $${APPROVAL_USD} approval threshold.`)
+      if (!approved) return setError('Transfer cancelled. Explicit approval was not provided.')
+    } else {
+      const confirmed = window.confirm(`Confirm sending ${amount} ${selected.symbol} to ${recipient}?\n\nNetwork: Base Mainnet${transferUsd !== null ? `\nReference value: ~$${transferUsd.toFixed(2)}` : ''}`)
+      if (!confirmed) return setError('Transfer cancelled.')
+    }
     setLoading(true)
     try {
       const ethereum = (window as any).ethereum
@@ -84,7 +97,7 @@ export default function TokenizedStocks({ wallet }: { wallet: string }) {
     <div className="stockControls"><div className="stockField"><label>ASSET</label><select value={symbol} onChange={event => setSymbol(event.target.value)}>{(assets.length ? assets.filter(asset => featured.includes(asset.symbol)) : featured.map(symbol => ({ symbol, name: symbol, address: '', decimals: 18 }))).map(asset => <option key={asset.symbol} value={asset.symbol}>{asset.symbol} · {asset.name}</option>)}</select></div><div className="stockField"><label>ACTION</label><div className="segmented"><button className={direction === 'send' ? 'selected' : ''} onClick={() => setDirection('send')}>Send</button><button className={direction === 'receive' ? 'selected' : ''} onClick={() => setDirection('receive')}>Receive</button></div></div></div>
     <div className="stockList">{(assets.length ? assets : featured.map(symbol => ({ symbol, name: symbol, address: '', decimals: 18 }))).map(asset => <button type="button" key={asset.symbol} onClick={() => setSymbol(asset.symbol)} className={asset.symbol === symbol ? 'stockRow selected' : 'stockRow'}><span className="ticker">{asset.symbol.replace('x', '')}</span><div><strong>{asset.symbol}</strong><small>{asset.name}</small></div><span>{asset.balance === undefined ? '—' : asset.balance.toFixed(4)}</span></button>)}</div>
     {direction === 'send' ? <div className="stockControls"><div className="stockField"><label>AMOUNT</label><input value={amount} onChange={event => setAmount(event.target.value)} inputMode="decimal" placeholder="0.10" /></div><div className="stockField"><label>RECIPIENT</label><input value={recipient} onChange={event => setRecipient(event.target.value)} placeholder="0x…" /></div></div> : <div className="receiveBox"><span>RECEIVE {symbol}</span><strong>{wallet || 'Connect wallet to show address'}</strong><small>Share this Base wallet address with the sender. Verify the selected asset and network before receiving.</small></div>}
-    {selected?.price ? <div className="stockMeta">Reference price · ${selected.price.toFixed(2)} · Contract · {selected.address.slice(0, 8)}…{selected.address.slice(-6)}</div> : <div className="stockMeta">Asset contracts and public price data are resolved from xStocks. Only Base deployments are shown.</div>}
+    {selected?.price ? <div className="stockMeta">Reference price · ${selected.price.toFixed(2)} · Contract · {selected.address.slice(0, 8)}…{selected.address.slice(-6)} · Policy · ≤$100/day</div> : <div className="stockMeta">Asset contracts and public price data are resolved from xStocks. Only Base deployments are shown.</div>}
     {direction === 'send' && <button className="secondaryButton stockButton" onClick={sendToken} disabled={loading}>{loading ? 'Waiting for wallet…' : `Send ${symbol}`}</button>}
     {message && <p className="success">{message}</p>}{error && <p className="error">{error}</p>}
     <p className="riskNote">Tokenized equities are financial instruments with jurisdiction and eligibility restrictions. Flitzr does not provide investment advice. Confirm the asset, destination and network before signing.</p>
