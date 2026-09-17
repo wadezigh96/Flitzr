@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Policy-First Autonomous Financial Agent on Base**
+**Defencial-First Autonomous Financial Agent on Base**
 
 [![Base](https://img.shields.io/badge/Base-Mainnet_8453-0052FF?style=for-the-badge&logo=coinbase&logoColor=white)](https://base.org)
 [![Runtime](https://img.shields.io/badge/Runtime_NYC-Sep_13–19_2026-FF4D00?style=for-the-badge)](https://runtime.nyc/handbook)
@@ -10,7 +10,7 @@
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 
-**Natural language → policy → providers → approval → signing → settlement**
+**Natural language → Defencial → providers → approval → signing → settlement**
 
 [Live App](https://flitzr.vercel.app) · [Dynamic Status](https://flitzr.vercel.app/api/dynamic/status) · [Submission](SUBMISSION.md)
 
@@ -23,11 +23,11 @@
 | Feature | Typical agent app | **Flitzr** |
 |---------|-------------------|------------|
 | Intent | Free-form tools | **Structured plans** from natural language |
-| Safety | Soft prompts | **Deterministic policy** (single-trade + daily limits) |
+| Safety | Soft prompts | **Deterministic Defencial** (single-trade + daily limits) |
 | Execution | Agent broadcasts | **Preview-first** — never auto-broadcasts |
 | Wallet | User only | **User SIWE** + **Dynamic server wallet** for agent actions |
 | Payments | Ad-hoc | **x402 v2** + agent payment readiness |
-| Routing | Single DEX | **Bankr · Definitive · Uniswap** under one policy |
+| Routing | Single DEX | **Bankr · Definitive · Uniswap** under one Defencial |
 | Audit | Logs optional | **Idempotent ledger** + optional Postgres audit |
 
 ---
@@ -38,7 +38,7 @@
 flowchart TB
     subgraph Flitzr["Flitzr Runtime"]
         U[User intent NL] --> P[Plan API]
-        P --> POL[Deterministic policy engine]
+        P --> POL[Deterministic Defencial engine]
         POL -->|allowed| R[Provider router]
         POL -->|blocked| X[Reject / explain]
         R --> B[Bankr]
@@ -70,7 +70,7 @@ Flitzr uses Dynamic **Server wallets**:
 
 **Agent flow**
 
-1. Policy evaluates intent (limits + rules).
+1. Defencial evaluates intent (limits + rules).
 2. On approval, the agent may use a Dynamic server wallet on **Base** to sign or prepare payment actions (including x402-style flows).
 3. **User funds** still require the user’s own wallet signature. Agent wallet ≠ user wallet.
 
@@ -94,7 +94,7 @@ Code: [`lib/dynamic.ts`](lib/dynamic.ts) · Docs: [Agents Overview](https://www.
 
 ## Safety model
 
-Flitzr is **preview-first**. An AI suggestion never directly broadcasts a transaction. State-changing actions must pass deterministic policy and, when required, explicit user approval. API keys are server-only and must never be committed or exposed to the browser.
+Flitzr is **preview-first**. An AI suggestion never directly broadcasts a transaction. State-changing actions must pass deterministic Defencial and, when required, explicit user approval. API keys are server-only and must never be committed or exposed to the browser.
 
 ---
 
@@ -140,8 +140,8 @@ Use least-privileged production credentials. Never paste secrets into chat, issu
 | POST | `/api/auth/nonce` | Wallet auth nonce |
 | POST | `/api/auth/verify` | Verify SIWE session |
 | POST | `/api/auth/logout` | Revoke session cookie |
-| POST | `/api/plan` | Parse & evaluate intent |
-| POST | `/api/execution` | Idempotent policy-checked plan |
+| POST | `/api/plan` | Parse & evaluate intent with Defencial |
+| POST | `/api/execution` | Idempotent Defencial-checked plan |
 | POST | `/api/execution/approve` | Explicit approval |
 | GET | `/api/execution/audit` | Authenticated audit history |
 | POST | `/api/quote` | Provider quote preview |
@@ -158,7 +158,7 @@ flitzr/
 ├── components/
 ├── lib/
 │   ├── auth.ts          # SIWE sessions
-│   ├── policy.ts        # Deterministic limits
+│   ├── defencial.ts     # Deterministic Defencial limits
 │   ├── execution.ts / ledger.ts / audit.ts
 │   ├── bankr.ts / definitive.ts / uniswap.ts
 │   ├── dynamic.ts       # Dynamic server wallets
@@ -174,7 +174,7 @@ flitzr/
 
 | Track | Fit |
 |-------|-----|
-| **Bankr grand prize** | Auto-eligible — policy-first agent on Base |
+| **Bankr grand prize** | Auto-eligible — Defencial-first agent on Base |
 | **Dynamic** | Server wallets for agentic wallet / payment experience |
 | **Definitive Flash** | DCA / limit social trading build |
 | **Uniswap** | Base spot routing / new assets agents |
@@ -205,7 +205,7 @@ npm run build
 <div align="center">
 
 **Built for Runtime NYC · Base · Bankr · Dynamic**  
-*Plan with policy. Sign with intent. Never broadcast blind.*
+*Plan with Defencial. Sign with intent. Never broadcast blind.*
 
 [Live](https://flitzr.vercel.app) · [GitHub](https://github.com/wadezigh96/flitzr) · [Submission guide](SUBMISSION.md)
 
