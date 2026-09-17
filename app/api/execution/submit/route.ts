@@ -41,9 +41,13 @@ export async function POST(request: Request) {
     if (execution.ownerWallet !== walletAddress) return NextResponse.json({ error: 'This execution belongs to a different wallet.' }, { status: 403 })
     if (execution.state === 'submitted' || execution.state === 'confirmed') return NextResponse.json({ execution, alreadySubmitted: true })
     if (execution.state !== 'quoted') return NextResponse.json({ error: `Execution cannot be submitted from state ${execution.state}.` }, { status: 409 })
-    if (execution.provider !== 'definitive' || !execution.quoteId || !execution.quoteTypedData) return NextResponse.json({ error: 'A valid Definitive quote and signing payload are required.' }, { status: 409 })
 
+    const quoteId = execution.quoteId
     const typedData = execution.quoteTypedData
+    if (execution.provider !== 'definitive' || !quoteId || !typedData) {
+      return NextResponse.json({ error: 'A valid Definitive quote and signing payload are required.' }, { status: 409 })
+    }
+
     let recovered: string
     try {
       recovered = await recoverTypedDataAddress({
@@ -60,23 +64,33 @@ export async function POST(request: Request) {
 
     const signing = transition(execution, 'signing')
     await executionStore.update(signing)
-    await executionStore.addAudit(auditEvent(signing.id, 'signing', { provider: signing.provider, quoteId: signing.quoteId }))
+    await executionStore.addAudit(auditEvent(signing.id, 'signing', { provider: signing.provider ?? 'definitive', quoteId }))
 
     try {
-      const raw = await definitiveOrder({ quoteId: signing.quoteId, evmOrderTypedData: typedData, userSignature })
+      const raw = await definitiveOrder({ quoteId, evmOrderTypedData: typedData, userSignature })
       const providerOrderId = extractString(raw, ['orderId', 'id', 'orderID'])
       const txHash = extractString(raw, ['txHash', 'transactionHash', 'transaction_hash'])
       const submitted = transition(signing, 'submitted')
-      const next = { ...submitted, providerOrderId, txHash }
+      const next = {
+        ...submitted,
+        ...(providerOrderId ? { providerOrderId } : {}),
+        ...(txHash ? { txHash } : {}),
+      }
       await executionStore.update(next)
-      await executionStore.addAudit(auditEvent(next.id, 'submitted', { provider: next.provider, quoteId: next.quoteId, providerOrderId: providerOrderId ?? null, txHash: txHash ?? null }))
+      await executionStore.addAudit(auditEvent(next.id, 'submitted', {
+        provider: next.provider ?? 'definitive',
+        quoteId,
+        providerOrderId: providerOrderId ?? null,
+        txHash: txHash ?? null,
+      }))
       return NextResponse.json({ execution: next, provider: raw, previewOnly: false })
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Provider submission failed.'
       const failed = transition(signing, 'failed')
-      const next = { ...failed, error: error instanceof Error ? error.message : 'Provider submission failed.' }
+      const next = { ...failed, error: errorMessage }
       await executionStore.update(next)
-      await executionStore.addAudit(auditEvent(next.id, 'failed', { error: next.error }))
-      return NextResponse.json({ error: next.error, execution: next }, { status: 502 })
+      await executionStore.addAudit(auditEvent(next.id, 'failed', { error: errorMessage }))
+      return NextResponse.json({ error: errorMessage, execution: next }, { status: 502 })
     }
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Order submission failed.' }, { status: 400 })
