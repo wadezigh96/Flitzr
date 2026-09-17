@@ -3,11 +3,11 @@
 import { useEffect, useState } from 'react'
 import TokenizedStocks from '@/components/TokenizedStocks'
 
-type Execution = { id: string; state: string; provider?: string; amountUsd: number; quoteId?: string }
+type Execution = { id: string; state: string; provider?: string; amountUsd: number; quoteId?: string; providerOrderId?: string; txHash?: string }
 type Result = {
   plan?: { intent: { type: string; amountUsd: number | null }; policy: { allowed: boolean; needsApproval: boolean; reason: string } }
   execution?: Execution
-  quote?: { message?: string; quoteId?: string }
+  quote?: { message?: string; quoteId?: string; raw?: any }
   error?: string
 }
 
@@ -21,6 +21,7 @@ export default function Home() {
   const [walletError, setWalletError] = useState('')
   const [approvalLoading, setApprovalLoading] = useState(false)
   const [quoteLoading, setQuoteLoading] = useState(false)
+  const [signingLoading, setSigningLoading] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
 
   useEffect(() => {
@@ -128,6 +129,33 @@ export default function Home() {
     }
   }
 
+  async function signAndSubmit() {
+    if (!result?.execution?.id || !wallet || !authenticated || signingLoading) return
+    setSigningLoading(true)
+    setResult(prev => ({ ...prev, error: undefined }))
+    try {
+      const ethereum = (window as any).ethereum
+      if (!ethereum) throw new Error('Wallet provider is not available.')
+      const payloadResponse = await fetch('/api/execution/signing-payload', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ executionId: result.execution.id, walletAddress: wallet }) })
+      const payloadData = await payloadResponse.json()
+      if (!payloadResponse.ok) throw new Error(payloadData.error || 'Could not prepare signing payload')
+
+      const signature = await ethereum.request({ method: 'eth_signTypedData_v4', params: [wallet, JSON.stringify(payloadData.typedData)] })
+      const submitResponse = await fetch('/api/execution/submit', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'Idempotency-Key': `submit_${result.execution.id}` },
+        body: JSON.stringify({ executionId: result.execution.id, walletAddress: wallet, userSignature: signature }),
+      })
+      const submitData = await submitResponse.json()
+      if (!submitResponse.ok) throw new Error(submitData.error || 'Order submission failed')
+      setResult(prev => ({ ...prev, execution: submitData.execution, error: undefined }))
+    } catch (error) {
+      setResult(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Signing or submission failed.' }))
+    } finally {
+      setSigningLoading(false)
+    }
+  }
+
   const shortWallet = wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect Wallet'
   const stateIndex = result?.execution ? states.indexOf(result.execution.state) : -1
   const canQuote = result?.execution && ['planned', 'approved'].includes(result.execution.state)
@@ -168,7 +196,13 @@ export default function Home() {
               {result.quote?.quoteId && <small>Quote ready: {result.quote.quoteId}</small>}
               {result.execution?.state === 'awaiting_approval' && <button className="approveButton" onClick={approve} disabled={approvalLoading}>{approvalLoading ? 'Approving…' : 'Approve execution'}</button>}
               {canQuote && <button className="approveButton" onClick={prepareQuote} disabled={quoteLoading}>{quoteLoading ? 'Getting quote…' : 'Prepare provider quote'}</button>}
-              {result.execution?.state === 'quoted' && <small>Provider quote prepared. No transaction has been broadcast.</small>}
+              {result.execution?.state === 'quoted' && <>
+                <small>Provider quote prepared. No transaction has been broadcast.</small>
+                {result.execution.provider === 'definitive' && <button className="approveButton" onClick={signAndSubmit} disabled={signingLoading}>{signingLoading ? 'Sign & submit…' : 'Review & sign order'}</button>}
+              </>}
+              {result.execution?.state === 'submitted' && <small>Order submitted to the provider. Confirmation is not assumed until the provider/chain reports it.</small>}
+              {result.execution?.providerOrderId && <small>Provider order: {result.execution.providerOrderId}</small>}
+              {result.execution?.txHash && <small>Transaction: {result.execution.txHash}</small>}
             </div>
           )}
         </div>
@@ -190,17 +224,17 @@ export default function Home() {
       {result?.execution && (
         <section className="card timelineCard">
           <div className="sectionHead"><div><div className="sectionKicker">04 · OPERATIONS</div><h2>Execution timeline</h2></div><span className="stateBadge">{result.execution.state.replace('_', ' ')}</span></div>
-          <div className="timeline">{states.map((state, index) => <div className={`step ${index <= stateIndex ? 'active' : ''}`} key={state}><span className="dot" /><div><strong>{state.replace('_', ' ')}</strong><small>{state === 'awaiting_approval' ? 'Policy approval gate' : state === 'quoted' ? 'Provider quote prepared' : state === 'confirmed' ? 'Chain confirmation' : 'Execution state'}</small></div></div>)}</div>
-          <p className="previewNote">Preview mode is active. Approval and quote preparation do not broadcast a transaction.</p>
+          <div className="timeline">{states.map((state, index) => <div className={`step ${index <= stateIndex ? 'active' : ''}`} key={state}><span className="dot" /><div><strong>{state.replace('_', ' ')}</strong><small>{state === 'awaiting_approval' ? 'Policy approval gate' : state === 'quoted' ? 'Provider quote prepared' : state === 'signing' ? 'Wallet signing in progress' : state === 'submitted' ? 'Provider accepted the order' : state === 'confirmed' ? 'Chain confirmation' : 'Execution state'}</small></div></div>)}</div>
+          <p className="previewNote">Signing is an explicit wallet action. Flitzr never receives or stores your private key.</p>
         </section>
       )}
 
       <section className="lowerGrid">
-        <div className="card activityCard"><div className="sectionHead"><div><div className="sectionKicker">05 · AUDIT</div><h2>Activity</h2></div><span className="liveSmall">SESSION</span></div><div className="activity"><div><span className="activityDot green" /><div><strong>Policy engine</strong><span>{result ? 'Request evaluated against Base guardrails' : 'Waiting for a command'}</span></div><time>NOW</time></div><div><span className="activityDot" /><div><strong>Execution layer</strong><span>{result?.execution ? `${result.execution.provider || 'provider'} · ${result.execution.state}` : 'No execution created'}</span></div><time>—</time></div><div><span className="activityDot" /><div><strong>Settlement</strong><span>Broadcast disabled in preview mode</span></div><time>SAFE</time></div></div></div>
-        <div className="card treasuryCard"><div className="sectionHead"><div><div className="sectionKicker">06 · TREASURY</div><h2>Wallet session</h2></div><span className="shield">✓</span></div><div className="treasuryValue">{wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Not connected'}</div><p className="muted">{authenticated ? 'Wallet authenticated with signed SIWE. Server-side sponsor keys never enter the client.' : 'Connect and sign in before planning an execution.'}</p><button className="secondaryButton" onClick={authenticated ? logoutWallet : connectWallet}>{authenticated ? 'End wallet session' : 'Connect & sign in'}</button></div>
+        <div className="card activityCard"><div className="sectionHead"><div><div className="sectionKicker">05 · AUDIT</div><h2>Activity</h2></div><span className="liveSmall">SESSION</span></div><div className="activity"><div><span className="activityDot green" /><div><strong>Policy engine</strong><span>{result ? 'Request evaluated against Base guardrails' : 'Waiting for a command'}</span></div><time>NOW</time></div><div><span className="activityDot" /><div><strong>Execution layer</strong><span>{result?.execution ? `${result.execution.provider || 'provider'} · ${result.execution.state}` : 'No execution created'}</span></div><time>—</time></div><div><span className="activityDot" /><div><strong>Settlement</strong><span>{result?.execution?.state === 'submitted' ? 'Provider submission recorded' : 'Broadcast disabled until explicit signing'}</span></div><time>{result?.execution?.state === 'submitted' ? 'LIVE' : 'SAFE'}</time></div></div></div>
+        <div className="card treasuryCard"><div className="sectionHead"><div><div className="sectionKicker">06 · TREASURY</div><h2>Wallet session</h2></div><span className="shield">✓</span></div><div className="treasuryValue">{wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Not connected'}</div><p className="muted">{authenticated ? 'Wallet authenticated with signed SIWE. Sponsor API keys never enter the client.' : 'Connect and sign in before planning an execution.'}</p><button className="secondaryButton" onClick={authenticated ? logoutWallet : connectWallet}>{authenticated ? 'End wallet session' : 'Connect & sign in'}</button></div>
       </section>
 
-      <footer><div>FLITZR <span>·</span> RUNTIME AGENT WEEK BUILD</div><div>POLICY-FIRST · PREVIEW-FIRST · BASE</div></footer>
+      <footer><div>FLITZR <span>·</span> RUNTIME AGENT WEEK BUILD</div><div>POLICY-FIRST · SIGNATURE-GATED · BASE</div></footer>
     </main>
   )
 }
