@@ -39,7 +39,19 @@ export async function POST(request: Request) {
     const execution = await executionStore.get(executionId)
     if (!execution) return NextResponse.json({ error: 'Execution not found.' }, { status: 404 })
     if (execution.ownerWallet !== walletAddress) return NextResponse.json({ error: 'This execution belongs to a different wallet.' }, { status: 403 })
-    if (execution.state === 'submitted' || execution.state === 'confirmed') return NextResponse.json({ execution, alreadySubmitted: true })
+
+    if (idempotencyKey) {
+      const claim = await executionStore.claimIdempotency(idempotencyKey, walletAddress, executionId)
+      if (!claim.sameExecution) {
+        return NextResponse.json({ error: 'This Idempotency-Key is already associated with another execution.' }, { status: 409 })
+      }
+      if (!claim.claimed && claim.existingExecution && (claim.existingExecution.state === 'submitted' || claim.existingExecution.state === 'confirmed')) {
+        return NextResponse.json({ execution: claim.existingExecution, alreadySubmitted: true, idempotentReplay: true })
+      }
+    }
+
+    if (execution.state === 'submitted' || execution.state === 'confirmed') return NextResponse.json({ execution, alreadySubmitted: true, idempotentReplay: Boolean(idempotencyKey) })
+    if (execution.state === 'signing') return NextResponse.json({ execution, submissionInProgress: true }, { status: 202 })
     if (execution.state !== 'quoted') return NextResponse.json({ error: `Execution cannot be submitted from state ${execution.state}.` }, { status: 409 })
 
     const quoteId = execution.quoteId
@@ -64,7 +76,7 @@ export async function POST(request: Request) {
 
     const signing = transition(execution, 'signing')
     await executionStore.update(signing)
-    await executionStore.addAudit(auditEvent(signing.id, 'signing', { provider: signing.provider ?? 'definitive', quoteId }))
+    await executionStore.addAudit(auditEvent(signing.id, 'signing', { provider: signing.provider ?? 'definitive', quoteId, idempotencyKey: idempotencyKey || null }))
 
     try {
       const raw = await definitiveOrder({ quoteId, evmOrderTypedData: typedData, userSignature })
@@ -82,6 +94,7 @@ export async function POST(request: Request) {
         quoteId,
         providerOrderId: providerOrderId ?? null,
         txHash: txHash ?? null,
+        idempotencyKey: idempotencyKey || null,
       }))
       return NextResponse.json({ execution: next, provider: raw, previewOnly: false })
     } catch (error) {
