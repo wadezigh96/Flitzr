@@ -2,7 +2,10 @@
 
 import { useState } from 'react'
 
-type Result = { plan?: { intent: { type: string; amountUsd: number | null }; policy: { allowed: boolean; needsApproval: boolean; reason: string }; execution: string; nextStep: string }; quote?: { configured?: boolean; demo?: boolean; message?: string; quoteId?: string }; error?: string }
+type Execution = { id: string; state: string; provider?: string; amountUsd: number }
+type Result = { plan?: { intent: { type: string; amountUsd: number | null }; policy: { allowed: boolean; needsApproval: boolean; reason: string }; execution: string }; execution?: Execution; quote?: { configured?: boolean; demo?: boolean; message?: string; quoteId?: string }; error?: string }
+
+const states = ['planned', 'awaiting_approval', 'approved', 'quoted', 'signing', 'submitted', 'confirmed']
 
 export default function Home() {
   const [prompt, setPrompt] = useState('')
@@ -10,6 +13,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false)
   const [wallet, setWallet] = useState('')
   const [walletError, setWalletError] = useState('')
+  const [approvalLoading, setApprovalLoading] = useState(false)
 
   async function connectWallet() {
     setWalletError('')
@@ -30,12 +34,27 @@ export default function Home() {
     try {
       const response = await fetch('/api/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt }) })
       const data = await response.json()
-      setResult(data)
+      const executionResponse = await fetch('/api/execution', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt }) })
+      const executionData = await executionResponse.json()
+      setResult({ ...data, execution: executionData.execution })
     } catch { setResult({ error: 'Could not reach the Flitzr planner.' }) }
     finally { setLoading(false) }
   }
 
+  async function approve() {
+    if (!result?.execution?.id || approvalLoading) return
+    setApprovalLoading(true)
+    try {
+      const response = await fetch('/api/execution/approve', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ executionId: result.execution.id, approval: true }) })
+      const data = await response.json()
+      if (!response.ok) return setResult(prev => ({ ...prev, error: data.error || 'Approval failed' }))
+      setResult(prev => ({ ...prev, execution: data.execution, error: undefined }))
+    } finally { setApprovalLoading(false) }
+  }
+
   const shortWallet = wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect Wallet'
+  const currentState = result?.execution?.state
+  const stateIndex = currentState ? states.indexOf(currentState) : -1
 
   return (
     <main className="shell">
@@ -43,14 +62,15 @@ export default function Home() {
       <section className="hero"><div className="eyebrow">Autonomous onchain financial agent</div><h1>Money moves by policy, not by guesswork.</h1><p>Flitzr turns a natural-language goal into a controlled execution plan. Every request is checked against your policy before a trading adapter is allowed to proceed.</p></section>
       <section className="grid">
         <div className="card"><h2>Ask Flitzr</h2><div className="agent"><input value={prompt} onChange={e => { setPrompt(e.target.value); setResult(null) }} onKeyDown={e => e.key === 'Enter' && runAgent()} placeholder="e.g. DCA $20 of ETH every week" /><button onClick={runAgent} disabled={loading}>{loading ? 'Planning…' : 'Plan'}</button></div>
-          {walletError && <p className="error">{walletError}</p>}
-          {result?.error && <p className="error">{result.error}</p>}
-          {result?.plan && <div className="result"><div className="resultTop"><strong>{result.plan.intent.type.toUpperCase()} PLAN</strong><span>{result.plan.policy.needsApproval ? 'APPROVAL REQUIRED' : result.plan.execution}</span></div><p>{result.plan.policy.reason}</p><div className="chips"><span>Base</span><span>{result.plan.intent.amountUsd === null ? 'Amount needed' : `$${result.plan.intent.amountUsd}`}</span><span>{result.plan.policy.allowed ? 'Policy OK' : 'Blocked'}</span><span>Preview only</span></div>{result.quote?.message && <small>{result.quote.message}</small>}{result.quote?.quoteId && <small>Quote ready: {result.quote.quoteId}</small>}</div>}
+          {walletError && <p className="error">{walletError}</p>}{result?.error && <p className="error">{result.error}</p>}
+          {result?.plan && <div className="result"><div className="resultTop"><strong>{result.plan.intent.type.toUpperCase()} PLAN</strong><span>{result.plan.policy.needsApproval ? 'APPROVAL REQUIRED' : 'POLICY OK'}</span></div><p>{result.plan.policy.reason}</p><div className="chips"><span>Base</span><span>{result.plan.intent.amountUsd === null ? 'Amount needed' : `$${result.plan.intent.amountUsd}`}</span><span>{result.plan.policy.allowed ? 'Policy OK' : 'Blocked'}</span><span>Preview only</span></div>{result.quote?.message && <small>{result.quote.message}</small>}{result.quote?.quoteId && <small>Quote ready: {result.quote.quoteId}</small>}
+          {result.execution?.state === 'awaiting_approval' && <button className="approveButton" onClick={approve} disabled={approvalLoading}>{approvalLoading ? 'Approving…' : 'Approve execution'}</button>}</div>}
         </div>
         <div className="card"><h2>Agent policy</h2><div className="policy"><div><div className="label">Network</div><div className="value">Base</div></div><div><div className="label">Single trade</div><div className="value">$25 max</div></div><div><div className="label">Daily budget</div><div className="value">$100 max</div></div><div><div className="label">Approval</div><div className="value">Required &gt; $25</div></div></div></div>
       </section>
-      <section className="card" style={{ marginTop: 18 }}><h2>Execution layer</h2><div className="features"><div className="feature"><strong>Bankr Agent API</strong><span>Natural-language agent and wallet operations — server-side key only.</span></div><div className="feature"><strong>Definitive Flash</strong><span>DCA and limit quote planning is wired server-side. Signing and live submission remain disabled until explicit approval.</span></div><div className="feature"><strong>Base + routing</strong><span>Base-first settlement with a server-side Uniswap adapter ready for configured credentials.</span></div></div></section>
-      <div className="footer">Flitzr · RUNTIME Agent Week build · secrets stay server-side · planner is preview-only</div>
+      {result?.execution && <section className="card" style={{ marginTop: 18 }}><div className="timelineHeader"><h2>Execution timeline</h2><span className="stateBadge">{result.execution.state.replace('_', ' ')}</span></div><div className="timeline">{states.map((state, index) => <div className={`step ${index <= stateIndex ? 'active' : ''}`} key={state}><span className="dot" /><div><strong>{state.replace('_', ' ')}</strong><small>{index === 0 ? 'Intent accepted' : index === 1 ? 'Policy approval gate' : index === 2 ? 'User approved' : index === 3 ? 'Provider quote' : index === 4 ? 'Wallet signing' : index === 5 ? 'Base transaction' : 'Chain confirmation'}</small></div></div>)}</div><p className="previewNote">Preview mode is active. No transaction is submitted to Base from this interface yet.</p></section>}
+      <section className="card" style={{ marginTop: 18 }}><h2>Execution layer</h2><div className="features"><div className="feature"><strong>Bankr Agent API</strong><span>Natural-language agent and wallet operations — server-side key only.</span></div><div className="feature"><strong>Definitive Flash</strong><span>DCA and limit quote planning is wired server-side. Signing and live submission remain disabled until explicit approval.</span></div><div className="feature"><strong>Base + routing</strong><span>Base-first settlement with a server-side Uniswap adapter planned for live routing.</span></div></div></section>
+      <div className="footer">Flitzr · RUNTIME Agent Week build · secrets stay server-side · preview-first execution</div>
     </main>
   )
 }
