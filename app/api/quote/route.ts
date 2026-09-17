@@ -1,6 +1,13 @@
 import { NextResponse } from 'next/server'
 import { selectProvider } from '@/lib/providers'
 import { normalizeWallet } from '@/lib/execution'
+import { readSession } from '@/lib/auth'
+
+function sessionFromRequest(request: Request) {
+  const cookie = request.headers.get('cookie') || ''
+  const token = cookie.split(';').map(v => v.trim()).find(v => v.startsWith('flitzr_session='))?.slice('flitzr_session='.length)
+  return readSession(token)
+}
 
 export async function POST(request: Request) {
   try {
@@ -18,6 +25,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Amount must be a positive base-unit integer.' }, { status: 400 })
     }
     if (!swapper) return NextResponse.json({ error: 'A valid Base wallet is required.' }, { status: 400 })
+
+    const session = sessionFromRequest(request)
+    if (!session || session.address.toLowerCase() !== swapper) return NextResponse.json({ error: 'Authenticate the connected wallet before requesting a quote.' }, { status: 401 })
 
     const provider = selectProvider(orderType)
     if (!provider) return NextResponse.json({ error: `No provider supports ${orderType} orders yet.` }, { status: 422 })
