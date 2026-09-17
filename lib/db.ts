@@ -55,6 +55,27 @@ export async function persistIdempotency(ownerWallet: string, key: string, execu
   await sql`INSERT INTO flitzr_idempotency (owner_wallet,idempotency_key,execution_id) VALUES (${ownerWallet},${key},${executionId}) ON CONFLICT DO NOTHING`
 }
 
+export async function claimPersistentIdempotency(ownerWallet: string, key: string, executionId: string) {
+  if (!process.env.POSTGRES_URL) return { claimed: true, existingExecutionId: undefined as string | undefined }
+  await ensureDatabase()
+  const inserted = await sql`
+    INSERT INTO flitzr_idempotency (owner_wallet,idempotency_key,execution_id)
+    VALUES (${ownerWallet},${key},${executionId})
+    ON CONFLICT (owner_wallet,idempotency_key) DO NOTHING
+    RETURNING execution_id
+  `
+  if (inserted.rows.length > 0) return { claimed: true, existingExecutionId: undefined as string | undefined }
+  const existing = await sql`
+    SELECT execution_id FROM flitzr_idempotency
+    WHERE owner_wallet=${ownerWallet} AND idempotency_key=${key}
+    LIMIT 1
+  `
+  return {
+    claimed: false,
+    existingExecutionId: existing.rows[0]?.execution_id ? String(existing.rows[0].execution_id) : undefined,
+  }
+}
+
 export async function findPersistentExecution(id: string) {
   if (!process.env.POSTGRES_URL) return undefined
   await ensureDatabase()
