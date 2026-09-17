@@ -18,6 +18,14 @@ function usdcBaseUnits(amountUsd: number) {
   return String(Math.round(amountUsd * 1_000_000))
 }
 
+function extractDefinitiveTypedData(raw: unknown) {
+  const candidate = (raw as { evm?: { orderTypedData?: unknown } } | null)?.evm?.orderTypedData
+  if (!candidate || typeof candidate !== 'object') return undefined
+  const value = candidate as Record<string, unknown>
+  if (!value.domain || !value.types || !value.primaryType || !value.message) return undefined
+  return candidate as import('@/lib/execution').TypedDataPayload
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -57,9 +65,14 @@ export async function POST(request: Request) {
 
     let next = execution
     if (execution.state !== 'quoted') next = transition(execution, 'quoted')
-    next = { ...next, provider: rawQuote.provider, quoteId: rawQuote.quoteId }
+    next = {
+      ...next,
+      provider: rawQuote.provider,
+      quoteId: rawQuote.quoteId,
+      quoteTypedData: rawQuote.provider === 'definitive' ? extractDefinitiveTypedData(rawQuote.raw) : undefined,
+    }
     await executionStore.update(next)
-    await executionStore.addAudit(auditEvent(next.id, 'quoted', { provider: rawQuote.provider, quoteId: rawQuote.quoteId ?? null }))
+    await executionStore.addAudit(auditEvent(next.id, 'quoted', { provider: rawQuote.provider, quoteId: rawQuote.quoteId ?? null, signingPayloadAvailable: Boolean(next.quoteTypedData) }))
 
     return NextResponse.json({ execution: next, quote: rawQuote, previewOnly: true })
   } catch (error) {
