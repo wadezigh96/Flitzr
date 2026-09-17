@@ -2,30 +2,65 @@
 
 <div align="center">
 
-**First Defencial Autonomous Financial Agent on Base**
+**Defencial Autonomous Financial Agent on Base**
 
 [![Base](https://img.shields.io/badge/Base-Mainnet_8453-0052FF?style=for-the-badge&logo=coinbase&logoColor=white)](https://base.org)
 [![Runtime](https://img.shields.io/badge/Runtime_NYC-Sep_13–19_2026-FF4D00?style=for-the-badge)](https://runtime.nyc/handbook)
-[![Dynamic](https://img.shields.io/badge/Dynamic-Server_Wallets-7C3AED?style=for-the-badge)](https://www.dynamic.xyz/docs/overview/agents/overview)
+[![Privy](https://img.shields.io/badge/Privy-Wallet_Auth-7C3AED?style=for-the-badge)](https://www.privy.io/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 
 **Natural language → Defencial → providers → approval → signing → settlement**
 
-[Live App](https://flitzr.vercel.app) · [Dynamic Status](https://flitzr.vercel.app/api/dynamic/status) · [Submission](SUBMISSION.md)
+[Live App](https://flitzr.vercel.app) · [Submission](SUBMISSION.md)
 
 </div>
 
 ---
 
-## Why This Wins
+## About Flitzr
+
+Flitzr is an autonomous onchain financial agent designed to turn natural-language financial goals into controlled execution plans on **Base**.
+
+Instead of allowing an AI agent to execute transactions freely, Flitzr introduces **Defencial** — a deterministic control layer that evaluates spending limits, daily budgets, and approval requirements before execution.
+
+### How it works
+
+**Intent → Defencial → Approval → Quote → Sign → Submit**
+
+Users describe what they want, for example:
+
+> “DCA $20 of ETH every week.”
+
+Flitzr interprets the intent, checks it against the configured Defencial, prepares a provider quote, and requires explicit wallet approval and signing before an order can be submitted.
+
+### Core features
+
+- 🤖 **Autonomous financial agent** — converts natural-language instructions into structured execution plans.
+- 🛡️ **Defencial guardrails** — deterministic spending and approval controls independent of the AI.
+- 🔐 **Privy wallet authentication** — wallet sessions are protected without Flitzr handling private keys.
+- ⛓️ **Base Mainnet** — designed for onchain financial operations on Base.
+- 🔄 **Multi-provider execution** — supports integrations such as Bankr, Definitive, and Uniswap.
+- ✍️ **Explicit transaction signing** — users remain in control of final transaction authorization.
+- 📊 **Execution timeline** — users can see each stage from planning through submission.
+- 🧩 **Tokenized stocks interface** — provides an interface for tokenized-asset workflows alongside crypto operations.
+
+### The principle
+
+**Autonomous finance should automate execution without removing user control.**
+
+The agent can plan and coordinate actions, but deterministic Defencial rules and explicit wallet signing remain between the user's intent and onchain execution.
+
+---
+
+## Why Flitzr
 
 | Feature | Typical agent app | **Flitzr** |
 |---------|-------------------|------------|
 | Intent | Free-form tools | **Structured plans** from natural language |
 | Safety | Soft prompts | **Deterministic Defencial** (single-trade + daily limits) |
 | Execution | Agent broadcasts | **Preview-first** — never auto-broadcasts |
-| Wallet | User only | **User SIWE** + **Dynamic server wallet** for agent actions |
+| Wallet | User only | **Privy wallet authentication** + **Dynamic server wallet** for agent actions |
 | Payments | Ad-hoc | **x402 v2** + agent payment readiness |
 | Routing | Single DEX | **Bankr · Definitive · Uniswap** under one Defencial |
 | Audit | Logs optional | **Idempotent ledger** + optional Postgres audit |
@@ -51,7 +86,7 @@ flowchart TB
         LED --> AUD[Audit trail]
     end
 
-    U2[User wallet SIWE] -.->|session| P
+    U2[User wallet via Privy] -.->|authenticated session| P
     U2 -->|signs user funds| LED
     X402[x402 premium resource] -.->|HTTP 402| DYN
 ```
@@ -60,7 +95,7 @@ flowchart TB
 
 ## Dynamic integration (Runtime track)
 
-Flitzr uses Dynamic **Server wallets**:
+Flitzr uses Dynamic **Server wallets** for agent-side wallet and payment actions. User wallet authentication is handled by Privy.
 
 | Pattern | Ownership | Auth | In Flitzr |
 |---------|-----------|------|-----------|
@@ -71,8 +106,8 @@ Flitzr uses Dynamic **Server wallets**:
 **Agent flow**
 
 1. Defencial evaluates intent (limits + rules).
-2. On approval, the agent may use a Dynamic server wallet on **Base** to sign or prepare payment actions (including x402-style flows).
-3. **User funds** still require the user’s own wallet signature. Agent wallet ≠ user wallet.
+2. On approval, the agent may use a Dynamic server wallet on **Base** to sign or prepare payment actions, including x402-style flows.
+3. **User funds** still require the user's own Privy-authenticated wallet and explicit signature. Agent wallet ≠ user wallet.
 
 **Reviewer endpoint:** [`GET /api/dynamic/status`](https://flitzr.vercel.app/api/dynamic/status) — configured / ready / address (no secrets).
 
@@ -83,7 +118,7 @@ Code: [`lib/dynamic.ts`](lib/dynamic.ts) · Docs: [Agents Overview](https://www.
 ## Provider model
 
 | Provider | Role | State |
-|----------|------|--------|
+|----------|------|-------|
 | **Bankr** | Agent + wallet operations | Server adapter / quotes |
 | **Definitive Flash** | DCA + limit planning | Server quote / order adapter |
 | **Uniswap** | Base spot routing | Trading API quote adapter |
@@ -105,7 +140,7 @@ git clone https://github.com/wadezigh96/flitzr.git
 cd flitzr
 npm install
 cp .env.example .env.local
-# Fill AUTH_SECRET, provider keys, DYNAMIC_* as needed
+# Fill PRIVY_APP_ID, PRIVY_APP_SECRET, NEXT_PUBLIC_PRIVY_APP_ID and provider keys as needed
 npm run dev
 ```
 
@@ -113,38 +148,17 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
-## Environment
-
-```text
-BANKR_API_KEY=
-DEFINITIVE_API_KEY=
-UNISWAP_API_KEY=
-AUTH_SECRET=
-POSTGRES_URL=
-X402_PAY_TO=
-X402_PRICE_USDC=0.01
-X402_FACILITATOR_URL=
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-DYNAMIC_AUTH_TOKEN=
-DYNAMIC_ENVIRONMENT_ID=
-```
-
-Use least-privileged production credentials. Never paste secrets into chat, issues, commits, or screenshots.
-
----
-
 ## Main API surfaces
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| POST | `/api/auth/nonce` | Wallet auth nonce |
-| POST | `/api/auth/verify` | Verify SIWE session |
-| POST | `/api/auth/logout` | Revoke session cookie |
 | POST | `/api/plan` | Parse & evaluate intent with Defencial |
 | POST | `/api/execution` | Idempotent Defencial-checked plan |
 | POST | `/api/execution/approve` | Explicit approval |
+| POST | `/api/execution/quote` | Provider quote preview |
+| POST | `/api/execution/signing-payload` | Prepare typed signing payload |
+| POST | `/api/execution/submit` | Verify signature and submit order |
 | GET | `/api/execution/audit` | Authenticated audit history |
-| POST | `/api/quote` | Provider quote preview |
 | GET | `/api/x402/premium` | x402-protected resource |
 | GET | `/api/dynamic/status` | Dynamic server wallet readiness |
 
@@ -157,7 +171,8 @@ flitzr/
 ├── app/                 # Next.js App Router + API routes
 ├── components/
 ├── lib/
-│   ├── auth.ts          # SIWE sessions
+│   ├── auth.ts          # Legacy SIWE helpers / compatibility
+│   ├── privy.ts         # Privy server-side authentication
 │   ├── defencial.ts     # Deterministic Defencial limits
 │   ├── execution.ts / ledger.ts / audit.ts
 │   ├── bankr.ts / definitive.ts / uniswap.ts
@@ -172,9 +187,9 @@ flitzr/
 
 ## Tracks (Runtime NYC)
 
-| Track | Fit |
-|-------|-----|
-| **Bankr grand prize** | Auto-eligible — Defencial-first agent on Base |
+| Track | Integration |
+|-------|-------------|
+| **Bankr grand prize** | Defencial-first agent on Base |
 | **Dynamic** | Server wallets for agentic wallet / payment experience |
 | **Definitive Flash** | DCA / limit social trading build |
 | **Uniswap** | Base spot routing / new assets agents |
@@ -195,7 +210,7 @@ npm run build
 
 ## Production checklist
 
-- Stable `AUTH_SECRET`, Postgres, provider credentials
+- Stable Privy credentials and provider credentials
 - Rate limiting, monitoring, receipt polling
 - Small-fund / test validation before real money
 - Dynamic: `DYNAMIC_AUTH_TOKEN` + `DYNAMIC_ENVIRONMENT_ID` set; `/api/dynamic/status` → `ready: true`
@@ -204,7 +219,7 @@ npm run build
 
 <div align="center">
 
-**Built for Runtime NYC · Base · Bankr · Dynamic**  
+**Built for Runtime NYC · Base · Bankr · Dynamic · Privy**  
 *Plan with Defencial. Sign with intent. Never broadcast blind.*
 
 [Live](https://flitzr.vercel.app) · [GitHub](https://github.com/wadezigh96/flitzr) · [Submission guide](SUBMISSION.md)
