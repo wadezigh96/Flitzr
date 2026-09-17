@@ -15,7 +15,7 @@ export interface ExecutionStore {
   put(record: ExecutionRecord, idempotencyKey?: string): Promise<void>
   update(record: ExecutionRecord): Promise<void>
   getByIdempotencyKey(key: string, ownerWallet: string): Promise<ExecutionRecord | undefined>
-  claimIdempotency(key: string, ownerWallet: string, executionId: string): Promise<{ claimed: boolean; existingExecution?: ExecutionRecord }>
+  claimIdempotency(key: string, ownerWallet: string, executionId: string): Promise<{ claimed: boolean; sameExecution: boolean; existingExecution?: ExecutionRecord }>
   addAudit(event: AuditEvent): Promise<void>
   getAudit(executionId: string): Promise<AuditEvent[]>
 }
@@ -62,6 +62,7 @@ class ExecutionStoreImpl implements ExecutionStore {
     if (memoryId) {
       return {
         claimed: false,
+        sameExecution: memoryId === executionId,
         existingExecution: await this.get(memoryId),
       }
     }
@@ -69,18 +70,19 @@ class ExecutionStoreImpl implements ExecutionStore {
     const result = await claimPersistentIdempotency(ownerWallet, key, executionId)
     if (result.claimed) {
       this.idempotency.set(memoryKey, executionId)
-      return { claimed: true, existingExecution: undefined }
+      return { claimed: true, sameExecution: true, existingExecution: undefined }
     }
 
     if (result.existingExecutionId) {
       this.idempotency.set(memoryKey, result.existingExecutionId)
       return {
         claimed: false,
+        sameExecution: result.existingExecutionId === executionId,
         existingExecution: await this.get(result.existingExecutionId),
       }
     }
 
-    return { claimed: false, existingExecution: undefined }
+    return { claimed: false, sameExecution: false, existingExecution: undefined }
   }
 
   async addAudit(event: AuditEvent) {
