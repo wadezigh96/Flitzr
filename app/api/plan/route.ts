@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { DEFAULT_POLICY, detectIntent, evaluatePolicy } from '@/lib/policy'
+import { DEFAULT_DEFENCIAL, detectIntent, evaluateDefencial } from '@/lib/defencial'
 
 export async function POST(request: Request) {
   try {
@@ -7,14 +7,14 @@ export async function POST(request: Request) {
     if (typeof prompt !== 'string' || !prompt.trim()) return NextResponse.json({ error: 'Prompt is required' }, { status: 400 })
 
     const intent = detectIntent(prompt.trim())
-    const policy = evaluatePolicy(intent, DEFAULT_POLICY)
+    const defencial = evaluateDefencial(intent, DEFAULT_DEFENCIAL)
     return NextResponse.json({
       plan: {
         chain: 'Base',
         intent,
-        policy,
+        defencial,
         execution: 'preview-only',
-        nextStep: policy.allowed ? 'Prepare a provider quote after approval when required.' : 'Policy blocked this execution request.',
+        nextStep: defencial.allowed ? 'Prepare a provider quote after approval when required.' : 'Defencial blocked this execution request.',
       },
     })
   } catch (error) {
