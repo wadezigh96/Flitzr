@@ -1,6 +1,7 @@
 import type { ExecutionRecord } from '@/lib/execution'
 import type { AuditEvent } from '@/lib/audit'
 import {
+  claimPersistentIdempotency,
   findPersistentAudit,
   findPersistentByIdempotency,
   findPersistentExecution,
@@ -14,6 +15,7 @@ export interface ExecutionStore {
   put(record: ExecutionRecord, idempotencyKey?: string): Promise<void>
   update(record: ExecutionRecord): Promise<void>
   getByIdempotencyKey(key: string, ownerWallet: string): Promise<ExecutionRecord | undefined>
+  claimIdempotency(key: string, ownerWallet: string, executionId: string): Promise<{ claimed: boolean; existingExecution?: ExecutionRecord }>
   addAudit(event: AuditEvent): Promise<void>
   getAudit(executionId: string): Promise<AuditEvent[]>
 }
@@ -52,6 +54,33 @@ class ExecutionStoreImpl implements ExecutionStore {
       this.idempotency.set(`${ownerWallet}:${key}`, persistent.id)
     }
     return persistent
+  }
+
+  async claimIdempotency(key: string, ownerWallet: string, executionId: string) {
+    const memoryKey = `${ownerWallet}:${key}`
+    const memoryId = this.idempotency.get(memoryKey)
+    if (memoryId) {
+      return {
+        claimed: false,
+        existingExecution: await this.get(memoryId),
+      }
+    }
+
+    const result = await claimPersistentIdempotency(ownerWallet, key, executionId)
+    if (result.claimed) {
+      this.idempotency.set(memoryKey, executionId)
+      return { claimed: true, existingExecution: undefined }
+    }
+
+    if (result.existingExecutionId) {
+      this.idempotency.set(memoryKey, result.existingExecutionId)
+      return {
+        claimed: false,
+        existingExecution: await this.get(result.existingExecutionId),
+      }
+    }
+
+    return { claimed: false, existingExecution: undefined }
   }
 
   async addAudit(event: AuditEvent) {
