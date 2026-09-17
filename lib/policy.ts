@@ -22,25 +22,18 @@ export function detectIntent(text: string): OrderIntent {
   const lower = text.toLowerCase()
   const amountMatch = lower.match(/\$\s*([0-9]+(?:\.[0-9]+)?)/)
   const amountUsd = amountMatch ? Number(amountMatch[1]) : null
-
   let type: OrderIntent['type'] = 'unknown'
   if (/\bdca\b|every (day|week|month)|weekly|daily|monthly/.test(lower)) type = 'dca'
   else if (/\blimit\b|when .* reaches|at \$/.test(lower)) type = 'limit'
   else if (/\bswap\b|\bbuy\b|\bsell\b|\bmarket\b/.test(lower)) type = 'market'
-
   return { type, amountUsd, text }
 }
 
 export function evaluatePolicy(intent: OrderIntent, policy = DEFAULT_POLICY) {
   const amount = intent.amountUsd
-  if (amount === null) {
-    return { allowed: false, needsApproval: false, reason: 'Add a USD amount so Flitzr can evaluate the policy.' }
-  }
-  if (amount > policy.maxDailyUsd) {
-    return { allowed: false, needsApproval: false, reason: `Amount exceeds the $${policy.maxDailyUsd} daily budget.` }
-  }
-  if (amount > policy.maxSingleTradeUsd) {
-    return { allowed: false, needsApproval: true, reason: `Amount exceeds the $${policy.maxSingleTradeUsd} single-trade limit and requires approval.` }
-  }
-  return { allowed: true, needsApproval: amount > policy.approvalAboveUsd, reason: 'Within the configured execution policy.' }
+  if (amount === null) return { allowed: false, needsApproval: false, reason: 'Add a USD amount so Flitzr can evaluate the policy.' }
+  if (amount <= 0) return { allowed: false, needsApproval: false, reason: 'Amount must be greater than $0.' }
+  if (amount > policy.maxDailyUsd) return { allowed: false, needsApproval: false, reason: `Amount exceeds the $${policy.maxDailyUsd} daily budget.` }
+  const needsApproval = amount > policy.approvalAboveUsd
+  return { allowed: true, needsApproval, reason: needsApproval ? `Within daily budget, but user approval is required above $${policy.approvalAboveUsd}.` : `Within the configured $${policy.maxSingleTradeUsd} single-trade policy.` }
 }
