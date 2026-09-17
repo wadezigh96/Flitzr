@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import TokenizedStocks from '@/components/TokenizedStocks'
 
-type Execution = { id: string; state: string; provider?: string; amountUsd: number }
+type Execution = { id: string; state: string; provider?: string; amountUsd: number; quoteId?: string }
 type Result = {
   plan?: { intent: { type: string; amountUsd: number | null }; policy: { allowed: boolean; needsApproval: boolean; reason: string } }
   execution?: Execution
@@ -20,6 +20,7 @@ export default function Home() {
   const [wallet, setWallet] = useState('')
   const [walletError, setWalletError] = useState('')
   const [approvalLoading, setApprovalLoading] = useState(false)
+  const [quoteLoading, setQuoteLoading] = useState(false)
   const [authenticated, setAuthenticated] = useState(false)
 
   useEffect(() => {
@@ -114,8 +115,22 @@ export default function Home() {
     }
   }
 
+  async function prepareQuote() {
+    if (!result?.execution?.id || !wallet || !authenticated || quoteLoading) return
+    setQuoteLoading(true)
+    try {
+      const response = await fetch('/api/execution/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ executionId: result.execution.id, walletAddress: wallet }) })
+      const data = await response.json()
+      if (!response.ok) return setResult(prev => ({ ...prev, error: data.error || 'Quote failed' }))
+      setResult(prev => ({ ...prev, execution: data.execution, quote: data.quote, error: undefined }))
+    } finally {
+      setQuoteLoading(false)
+    }
+  }
+
   const shortWallet = wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect Wallet'
   const stateIndex = result?.execution ? states.indexOf(result.execution.state) : -1
+  const canQuote = result?.execution && ['planned', 'approved'].includes(result.execution.state)
 
   return (
     <main className="shell">
@@ -139,7 +154,7 @@ export default function Home() {
       <section className="dashboardGrid">
         <div className="card askCard">
           <div className="sectionHead"><div><div className="sectionKicker">01 · COMMAND</div><h2>Ask Flitzr</h2></div><span className="modeTag">PREVIEW MODE</span></div>
-          <p className="muted">Describe what you want your agent to do. Policy is checked before an execution path is prepared.</p>
+          <p className="muted">Describe what you want your agent to do. Policy is checked before a provider quote is prepared.</p>
           <div className="agent"><input value={prompt} onChange={e => { setPrompt(e.target.value); setResult(null) }} onKeyDown={e => e.key === 'Enter' && runAgent()} placeholder="DCA $20 of ETH every week" /><button onClick={runAgent} disabled={loading}>{loading ? 'Planning…' : 'Plan execution →'}</button></div>
           <div className="examples"><button onClick={() => setPrompt('DCA $20 of ETH every week')}>DCA $20 ETH weekly</button><button onClick={() => setPrompt('Limit buy $20 of ETH')}>Limit buy $20 ETH</button><button onClick={() => setPrompt('Swap $10 to ETH')}>Swap $10 to ETH</button></div>
           {walletError && <p className="error">{walletError}</p>}
@@ -148,10 +163,12 @@ export default function Home() {
             <div className="result">
               <div className="resultTop"><div><span className="resultLabel">PROPOSED ACTION</span><strong>{result.plan.intent.type.toUpperCase()}</strong></div><span className={result.plan.policy.allowed ? 'okBadge' : 'blockedBadge'}>{result.plan.policy.needsApproval ? 'APPROVAL REQUIRED' : result.plan.policy.allowed ? 'POLICY OK' : 'BLOCKED'}</span></div>
               <p>{result.plan.policy.reason}</p>
-              <div className="chips"><span>Base</span><span>{result.plan.intent.amountUsd === null ? 'Amount needed' : `$${result.plan.intent.amountUsd}`}</span><span>{result.plan.policy.allowed ? 'Within policy' : 'Policy blocked'}</span><span>Preview only</span></div>
+              <div className="chips"><span>Base</span><span>{result.plan.intent.amountUsd === null ? 'Amount needed' : `$${result.plan.intent.amountUsd}`}</span><span>{result.plan.policy.allowed ? 'Within policy' : 'Policy blocked'}</span><span>Quote preview</span></div>
               {result.quote?.message && <small>{result.quote.message}</small>}
               {result.quote?.quoteId && <small>Quote ready: {result.quote.quoteId}</small>}
               {result.execution?.state === 'awaiting_approval' && <button className="approveButton" onClick={approve} disabled={approvalLoading}>{approvalLoading ? 'Approving…' : 'Approve execution'}</button>}
+              {canQuote && <button className="approveButton" onClick={prepareQuote} disabled={quoteLoading}>{quoteLoading ? 'Getting quote…' : 'Prepare provider quote'}</button>}
+              {result.execution?.state === 'quoted' && <small>Provider quote prepared. No transaction has been broadcast.</small>}
             </div>
           )}
         </div>
@@ -173,8 +190,8 @@ export default function Home() {
       {result?.execution && (
         <section className="card timelineCard">
           <div className="sectionHead"><div><div className="sectionKicker">04 · OPERATIONS</div><h2>Execution timeline</h2></div><span className="stateBadge">{result.execution.state.replace('_', ' ')}</span></div>
-          <div className="timeline">{states.map((state, index) => <div className={`step ${index <= stateIndex ? 'active' : ''}`} key={state}><span className="dot" /><div><strong>{state.replace('_', ' ')}</strong><small>{state === 'awaiting_approval' ? 'Policy approval gate' : state === 'confirmed' ? 'Chain confirmation' : 'Execution state'}</small></div></div>)}</div>
-          <p className="previewNote">Preview mode is active. Approval changes state only; no transaction is broadcast.</p>
+          <div className="timeline">{states.map((state, index) => <div className={`step ${index <= stateIndex ? 'active' : ''}`} key={state}><span className="dot" /><div><strong>{state.replace('_', ' ')}</strong><small>{state === 'awaiting_approval' ? 'Policy approval gate' : state === 'quoted' ? 'Provider quote prepared' : state === 'confirmed' ? 'Chain confirmation' : 'Execution state'}</small></div></div>)}</div>
+          <p className="previewNote">Preview mode is active. Approval and quote preparation do not broadcast a transaction.</p>
         </section>
       )}
 
