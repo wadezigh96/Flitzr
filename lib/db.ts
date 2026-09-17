@@ -15,9 +15,13 @@ export async function ensureDatabase() {
     updated_at TIMESTAMPTZ NOT NULL,
     provider TEXT,
     quote_id TEXT,
+    quote_typed_data JSONB,
+    provider_order_id TEXT,
     tx_hash TEXT,
     error TEXT
   )`
+  await sql`ALTER TABLE flitzr_executions ADD COLUMN IF NOT EXISTS quote_typed_data JSONB`
+  await sql`ALTER TABLE flitzr_executions ADD COLUMN IF NOT EXISTS provider_order_id TEXT`
   await sql`CREATE TABLE IF NOT EXISTS flitzr_idempotency (
     owner_wallet TEXT NOT NULL,
     idempotency_key TEXT NOT NULL,
@@ -39,9 +43,9 @@ export async function persistExecution(record: ExecutionRecord) {
   if (!process.env.POSTGRES_URL) return
   await ensureDatabase()
   await sql`
-    INSERT INTO flitzr_executions (id,state,chain_id,intent,amount_usd,owner_wallet,created_at,updated_at,provider,quote_id,tx_hash,error)
-    VALUES (${record.id},${record.state},${record.chainId},${record.intent},${record.amountUsd},${record.ownerWallet},${record.createdAt},${record.updatedAt},${record.provider ?? null},${record.quoteId ?? null},${record.txHash ?? null},${record.error ?? null})
-    ON CONFLICT (id) DO UPDATE SET state=EXCLUDED.state,updated_at=EXCLUDED.updated_at,provider=EXCLUDED.provider,quote_id=EXCLUDED.quote_id,tx_hash=EXCLUDED.tx_hash,error=EXCLUDED.error
+    INSERT INTO flitzr_executions (id,state,chain_id,intent,amount_usd,owner_wallet,created_at,updated_at,provider,quote_id,quote_typed_data,provider_order_id,tx_hash,error)
+    VALUES (${record.id},${record.state},${record.chainId},${record.intent},${record.amountUsd},${record.ownerWallet},${record.createdAt},${record.updatedAt},${record.provider ?? null},${record.quoteId ?? null},${record.quoteTypedData ? JSON.stringify(record.quoteTypedData) : null},${record.providerOrderId ?? null},${record.txHash ?? null},${record.error ?? null})
+    ON CONFLICT (id) DO UPDATE SET state=EXCLUDED.state,updated_at=EXCLUDED.updated_at,provider=EXCLUDED.provider,quote_id=EXCLUDED.quote_id,quote_typed_data=EXCLUDED.quote_typed_data,provider_order_id=EXCLUDED.provider_order_id,tx_hash=EXCLUDED.tx_hash,error=EXCLUDED.error
   `
 }
 
@@ -96,7 +100,8 @@ export async function persistAudit(event: AuditEvent) {
 }
 
 function rowToExecution(row: Record<string, unknown>): ExecutionRecord {
+  const typedData = row.quote_typed_data && typeof row.quote_typed_data === 'object' ? row.quote_typed_data as ExecutionRecord['quoteTypedData'] : undefined
   return {
-    id: String(row.id), state: row.state as ExecutionRecord['state'], chainId: 8453, intent: row.intent as ExecutionRecord['intent'], amountUsd: Number(row.amount_usd), ownerWallet: String(row.owner_wallet), createdAt: new Date(String(row.created_at)).toISOString(), updatedAt: new Date(String(row.updated_at)).toISOString(), provider: row.provider as ExecutionRecord['provider'], quoteId: row.quote_id ? String(row.quote_id) : undefined, txHash: row.tx_hash ? String(row.tx_hash) : undefined, error: row.error ? String(row.error) : undefined,
+    id: String(row.id), state: row.state as ExecutionRecord['state'], chainId: 8453, intent: row.intent as ExecutionRecord['intent'], amountUsd: Number(row.amount_usd), ownerWallet: String(row.owner_wallet), createdAt: new Date(String(row.created_at)).toISOString(), updatedAt: new Date(String(row.updated_at)).toISOString(), provider: row.provider as ExecutionRecord['provider'], quoteId: row.quote_id ? String(row.quote_id) : undefined, quoteTypedData: typedData, providerOrderId: row.provider_order_id ? String(row.provider_order_id) : undefined, txHash: row.tx_hash ? String(row.tx_hash) : undefined, error: row.error ? String(row.error) : undefined,
   }
 }
