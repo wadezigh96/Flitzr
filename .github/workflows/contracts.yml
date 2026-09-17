@@ -1,0 +1,35 @@
+name: Contracts
+
+on:
+  push:
+    branches: [main, feat/**]
+    paths:
+      - "contracts/**"
+      - "foundry.toml"
+      - ".github/workflows/contracts.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "contracts/**"
+      - "foundry.toml"
+      - ".github/workflows/contracts.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install OpenZeppelin Contracts
+        run: forge install OpenZeppelin/openzeppelin-contracts@v5.4.0 --no-commit
+
+      - name: Install forge-std
+        run: forge install foundry-rs/forge-std --no-commit
+
+      - name: Check formatting
+        run: forge fmt --check
+
+      - name: Run contract tests
+        run: forge test -vvv
