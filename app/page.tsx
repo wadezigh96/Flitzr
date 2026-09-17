@@ -19,8 +19,10 @@ export default function Home() {
   const [quoteLoading, setQuoteLoading] = useState(false)
   const [signingLoading, setSigningLoading] = useState(false)
 
-  const wallet = wallets[0]?.address?.toLowerCase() || ''
-  const shortWallet = wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect Wallet'
+  // Privy can keep the wallet object linked after logout. Only expose it as
+  // connected in Flitzr while the Privy session is authenticated.
+  const wallet = authenticated ? (wallets[0]?.address?.toLowerCase() || '') : ''
+  const shortWallet = authenticated && wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect Wallet'
 
   useEffect(() => {
     if (!authenticated) setResult(null)
@@ -42,9 +44,13 @@ export default function Home() {
   }
 
   async function logoutWallet() {
-    await logout()
-    setResult(null)
-    setWalletError('Wallet session ended.')
+    try {
+      await logout()
+      setResult(null)
+      setWalletError('Wallet disconnected from Flitzr.')
+    } catch (error) {
+      setWalletError(error instanceof Error ? error.message : 'Could not disconnect the wallet from Flitzr.')
+    }
   }
 
   async function runAgent() {
@@ -110,7 +116,7 @@ export default function Home() {
 
   return (
     <main className="shell">
-      <nav className="nav"><div className="brandWrap"><div className="brandMark">F</div><div><div className="brand">FLITZR</div><div className="brandSub">DEFENCIAL AGENTIC FINANCE</div></div></div><div className="navRight"><div className="live"><span /> BASE MAINNET · LIVE</div><button className="walletButton" onClick={authenticated ? logoutWallet : connectWallet} disabled={!ready}>{authenticated ? `${shortWallet} · Sign out` : shortWallet}</button></div></nav>
+      <nav className="nav"><div className="brandWrap"><div className="brandMark">F</div><div><div className="brand">FLITZR</div><div className="brandSub">DEFENCIAL AGENTIC FINANCE</div></div></div><div className="navRight"><div className="live"><span /> BASE MAINNET · LIVE</div><button className="walletButton" onClick={authenticated ? logoutWallet : connectWallet} disabled={!ready}>{authenticated ? `${shortWallet} · Disconnect` : shortWallet}</button></div></nav>
       <section className="hero"><div><div className="eyebrow">Defencial-first onchain agent</div><h1>Your money.<br /><span>Your Defencial.</span><br />Your agent.</h1><p>Turn a financial goal into a controlled execution plan. Flitzr separates intent, Defencial, approval, routing, and settlement.</p></div><div className="heroPanel"><div className="panelLabel">SYSTEM STATUS</div><div className="systemRow"><span className="pulse" /><strong>{authenticated ? 'Privy wallet authenticated' : 'Agent operational'}</strong></div><div className="systemMeta">Preview-first execution · Base · Privy protected</div></div></section>
       <section className="metrics"><div className="metric"><span>AGENT</span><strong>READY</strong><small>Defencial engine online</small></div><div className="metric"><span>NETWORK</span><strong>BASE</strong><small>Chain ID 8453</small></div><div className="metric"><span>SINGLE LIMIT</span><strong>$25</strong><small>Approval above limit</small></div><div className="metric"><span>DAILY BUDGET</span><strong>$100</strong><small>Defencial-controlled</small></div></section>
       <section className="dashboardGrid"><div className="card askCard"><div className="sectionHead"><div><div className="sectionKicker">01 · COMMAND</div><h2>Ask Flitzr</h2></div><span className="modeTag">PREVIEW MODE</span></div><p className="muted">Describe what you want your agent to do. Defencial is checked before a provider quote is prepared.</p><div className="agent"><input value={prompt} onChange={e => { setPrompt(e.target.value); setResult(null) }} onKeyDown={e => e.key === 'Enter' && runAgent()} placeholder="DCA $20 of ETH every week" /><button onClick={runAgent} disabled={loading}>{loading ? 'Planning…' : 'Plan execution →'}</button></div><div className="examples"><button onClick={() => setPrompt('DCA $20 of ETH every week')}>DCA $20 ETH weekly</button><button onClick={() => setPrompt('Limit buy $20 of ETH')}>Limit buy $20 ETH</button><button onClick={() => setPrompt('Swap $10 to ETH')}>Swap $10 to ETH</button></div>{walletError && <p className="error">{walletError}</p>}{result?.error && <p className="error">{result.error}</p>}{result?.plan && <div className="result"><div className="resultTop"><div><span className="resultLabel">PROPOSED ACTION</span><strong>{result.plan.intent.type.toUpperCase()}</strong></div><span className={result.plan.policy.allowed ? 'okBadge' : 'blockedBadge'}>{result.plan.policy.needsApproval ? 'APPROVAL REQUIRED' : result.plan.policy.allowed ? 'DEFENCIAL OK' : 'BLOCKED'}</span></div><p>{result.plan.policy.reason.replaceAll('policy', 'Defencial').replaceAll('Policy', 'Defencial')}</p><div className="chips"><span>Base</span><span>{result.plan.intent.amountUsd === null ? 'Amount needed' : `$${result.plan.intent.amountUsd}`}</span><span>{result.plan.policy.allowed ? 'Within Defencial' : 'Defencial blocked'}</span><span>Quote preview</span></div>{result.quote?.message && <small>{result.quote.message}</small>}{result.quote?.quoteId && <small>Quote ready: {result.quote.quoteId}</small>}{result.execution?.state === 'awaiting_approval' && <button className="approveButton" onClick={approve} disabled={approvalLoading}>{approvalLoading ? 'Approving…' : 'Approve execution'}</button>}{canQuote && <button className="approveButton" onClick={prepareQuote} disabled={quoteLoading}>{quoteLoading ? 'Getting quote…' : 'Prepare provider quote'}</button>}{result.execution?.state === 'quoted' && <><small>Provider quote prepared. No transaction has been broadcast.</small>{result.execution.provider === 'definitive' && <button className="approveButton" onClick={signAndSubmit} disabled={signingLoading}>{signingLoading ? 'Sign & submit…' : 'Review & sign order'}</button>}</>}{result.execution?.state === 'submitted' && <small>Order submitted to the provider. Confirmation is not assumed until the provider/chain reports it.</small>}{result.execution?.providerOrderId && <small>Provider order: {result.execution.providerOrderId}</small>}{result.execution?.txHash && <small>Transaction: {result.execution.txHash}</small>}</div>}</div><aside className="card policyCard"><div className="sectionHead"><div><div className="sectionKicker">02 · GUARDRAILS</div><h2>Defencial guardrails</h2></div><span className="shield">✓</span></div><div className="policy"><div><span>Network</span><strong>Base Mainnet</strong></div><div><span>Single trade</span><strong>$25 max</strong></div><div><span>Daily budget</span><strong>$100 max</strong></div><div><span>Approval gate</span><strong>&gt; $25</strong></div></div><div className="policyNote"><span className="dotGreen" /> Deterministic Defencial · independent of AI</div></aside></section>
