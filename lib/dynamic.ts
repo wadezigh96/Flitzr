@@ -29,7 +29,8 @@ export type DynamicSignResult =
 function env() {
   const authToken = process.env.DYNAMIC_AUTH_TOKEN?.trim()
   const environmentId = process.env.DYNAMIC_ENVIRONMENT_ID?.trim()
-  return { authToken, environmentId }
+  const backupPassword = process.env.DYNAMIC_WALLET_BACKUP_PASSWORD?.trim()
+  return { authToken, environmentId, backupPassword }
 }
 
 export function getDynamicStatus(): DynamicWalletStatus {
@@ -79,13 +80,18 @@ export async function ensureAgentServerWallet(): Promise<
     }
 
     const { ThresholdSignatureScheme } = await import('@dynamic-labs-wallet/node')
-    const result = await (client as any).createWalletAccount({
+    const { backupPassword } = env()
+    const createOptions: Record<string, unknown> = {
       thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
-      backUpToDynamic: true,
+      backUpToDynamic: Boolean(backupPassword),
       onError: (err: Error) => {
         console.error('[dynamic] createWalletAccount error', err)
       },
-    })
+    }
+    if (backupPassword) {
+      createOptions.password = backupPassword
+    }
+    const result = await (client as any).createWalletAccount(createOptions)
 
     const created = result as any
     const metadata = created?.walletMetadata || {}
