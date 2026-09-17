@@ -10,6 +10,23 @@ const DAILY_LIMIT_USD = 100
 
 const fallbackAssets: Asset[] = featured.map(symbol => ({ symbol, name: symbol, address: '', decimals: 18 }))
 
+function parseAssets(value: unknown): Asset[] {
+  if (!Array.isArray(value)) return []
+  return value.flatMap(item => {
+    if (!item || typeof item !== 'object') return []
+    const candidate = item as Record<string, unknown>
+    if (typeof candidate.symbol !== 'string' || typeof candidate.name !== 'string' || typeof candidate.address !== 'string' || typeof candidate.decimals !== 'number') return []
+    return [{
+      symbol: candidate.symbol,
+      name: candidate.name,
+      address: candidate.address,
+      decimals: candidate.decimals,
+      price: typeof candidate.price === 'number' ? candidate.price : undefined,
+      balance: typeof candidate.balance === 'number' ? candidate.balance : undefined,
+    }]
+  })
+}
+
 export default function TokenizedStocks({ wallet }: { wallet: string }) {
   const [assets, setAssets] = useState<Asset[]>([])
   const [symbol, setSymbol] = useState('AAPLx')
@@ -22,7 +39,12 @@ export default function TokenizedStocks({ wallet }: { wallet: string }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    fetch('/api/tokenized-stocks').then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Could not load tokenized stocks'); setAssets(data.assets || []) }).catch(error => setError(error instanceof Error ? error.message : 'Could not load tokenized stocks'))
+    fetch('/api/tokenized-stocks').then(async response => {
+      const data: unknown = await response.json()
+      if (!response.ok) throw new Error(data && typeof data === 'object' && 'error' in data ? String((data as { error?: unknown }).error) : 'Could not load tokenized stocks')
+      const assets = data && typeof data === 'object' && 'assets' in data ? parseAssets((data as { assets?: unknown }).assets) : []
+      setAssets(assets)
+    }).catch(error => setError(error instanceof Error ? error.message : 'Could not load tokenized stocks'))
   }, [])
 
   useEffect(() => {
@@ -93,7 +115,7 @@ export default function TokenizedStocks({ wallet }: { wallet: string }) {
     } catch (error) { setError(error instanceof Error ? error.message : 'Token transfer failed.') } finally { setLoading(false) }
   }
 
-  const displayAssets = assets.length ? assets : fallbackAssets
+  const displayAssets: Asset[] = assets.length ? assets : fallbackAssets
 
   return <section className="card stocksCard">
     <div className="sectionHead"><div><div className="sectionKicker">03.5 · TOKENIZED EQUITIES</div><h2>Tokenized stock portfolio</h2></div><span className="liveSmall">BASE · ERC-20</span></div>
