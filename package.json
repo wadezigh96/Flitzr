@@ -2,8 +2,15 @@
   "name": "flitzr",
   "version": "0.1.0",
   "private": true,
-  "scripts": {"dev": "next dev", "build": "next build", "start": "next start", "lint": "eslint ."},
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint ."
+  },
   "dependencies": {
+    "@dynamic-labs-wallet/node": "^1.0.0",
+    "@dynamic-labs-wallet/node-evm": "^1.0.0",
     "@vercel/postgres": "^0.10.0",
     "@x402/core": "^2.26.0",
     "@x402/evm": "^2.25.0",
@@ -13,5 +20,12 @@
     "react-dom": "^19.2.0",
     "viem": "^2.37.0"
   },
-  "devDependencies": {"@types/node": "^20.0.0", "@types/react": "^19.0.0", "@types/react-dom": "^19.0.0", "typescript": "^5.0.0", "eslint": "^9.0.0", "eslint-config-next": "^16.3.5"}
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.0.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "^16.3.5"
+  }
 }
