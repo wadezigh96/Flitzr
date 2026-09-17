@@ -1,9 +1,10 @@
 import { createHmac, randomBytes } from 'node:crypto'
 import { getAddress, verifyMessage } from 'viem'
+import { sql } from '@vercel/postgres'
 
 const CHAIN_ID = 8453
 const SESSION_TTL_MS = 24 * 60 * 60 * 1000
-const nonces = new Map<string, { nonce: string; expiresAt: number }>()
+const NONCE_TTL_MS = 5 * 60 * 1000
 
 type Session = { address: string; issuedAt: number; expiresAt: number }
 
@@ -14,18 +15,22 @@ function secret() {
   return 'flitzr-dev-only-change-me'
 }
 
-export function createNonce(address: string) {
+export async function createNonce(address: string) {
+  const normalized = getAddress(address)
   const nonce = randomBytes(16).toString('hex')
-  nonces.set(address.toLowerCase(), { nonce, expiresAt: Date.now() + 5 * 60 * 1000 })
+  if (process.env.POSTGRES_URL) {
+    await sql`CREATE TABLE IF NOT EXISTS flitzr_auth_nonces (address TEXT PRIMARY KEY, nonce TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL)`
+    await sql`INSERT INTO flitzr_auth_nonces (address, nonce, expires_at) VALUES (${normalized.toLowerCase()}, ${nonce}, ${new Date(Date.now() + NONCE_TTL_MS).toISOString()}) ON CONFLICT (address) DO UPDATE SET nonce=EXCLUDED.nonce, expires_at=EXCLUDED.expires_at`
+  }
   return nonce
 }
 
-export function consumeNonce(address: string, nonce: string) {
-  const key = address.toLowerCase()
-  const item = nonces.get(key)
-  if (!item || item.expiresAt < Date.now() || item.nonce !== nonce) return false
-  nonces.delete(key)
-  return true
+export async function consumeNonce(address: string, nonce: string) {
+  const key = getAddress(address).toLowerCase()
+  if (!process.env.POSTGRES_URL) return false
+  await sql`CREATE TABLE IF NOT EXISTS flitzr_auth_nonces (address TEXT PRIMARY KEY, nonce TEXT NOT NULL, expires_at TIMESTAMPTZ NOT NULL)`
+  const result = await sql`DELETE FROM flitzr_auth_nonces WHERE address=${key} AND nonce=${nonce} AND expires_at > NOW() RETURNING address`
+  return result.rows.length > 0
 }
 
 export function buildSiweMessage(origin: string, address: string, nonce: string) {
