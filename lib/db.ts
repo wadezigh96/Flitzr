@@ -76,6 +76,6 @@ export async function persistAudit(event: AuditEvent) {
 
 function rowToExecution(row: Record<string, unknown>): ExecutionRecord {
   return {
-    id: String(row.id), state: row.state as ExecutionRecord['state'], chainId: Number(row.chain_id), intent: row.intent as ExecutionRecord['intent'], amountUsd: Number(row.amount_usd), ownerWallet: String(row.owner_wallet), createdAt: new Date(String(row.created_at)).toISOString(), updatedAt: new Date(String(row.updated_at)).toISOString(), provider: row.provider as ExecutionRecord['provider'], quoteId: row.quote_id ? String(row.quote_id) : undefined, txHash: row.tx_hash ? String(row.tx_hash) : undefined, error: row.error ? String(row.error) : undefined,
+    id: String(row.id), state: row.state as ExecutionRecord['state'], chainId: 8453, intent: row.intent as ExecutionRecord['intent'], amountUsd: Number(row.amount_usd), ownerWallet: String(row.owner_wallet), createdAt: new Date(String(row.created_at)).toISOString(), updatedAt: new Date(String(row.updated_at)).toISOString(), provider: row.provider as ExecutionRecord['provider'], quoteId: row.quote_id ? String(row.quote_id) : undefined, txHash: row.tx_hash ? String(row.tx_hash) : undefined, error: row.error ? String(row.error) : undefined,
   }
 }
