@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { normalizeWallet, transition } from '@/lib/execution'
+import { auditEvent } from '@/lib/audit'
 import { executionStore } from '@/lib/ledger'
 
 export async function POST(request: Request) {
@@ -12,8 +13,10 @@ export async function POST(request: Request) {
     const execution = executionStore.get(executionId)
     if (!execution) return NextResponse.json({ error: 'Execution not found' }, { status: 404 })
     if (execution.ownerWallet !== ownerWallet) return NextResponse.json({ error: 'This execution belongs to a different wallet.' }, { status: 403 })
+    if (execution.state === 'approved') return NextResponse.json({ execution, previewOnly: true, idempotentReplay: true })
     const approved = transition(execution, 'approved')
     executionStore.update(approved)
+    executionStore.addAudit(auditEvent(approved.id, 'approved', { wallet: ownerWallet }))
     return NextResponse.json({ execution: approved, previewOnly: true })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Approval failed' }, { status: 409 })
