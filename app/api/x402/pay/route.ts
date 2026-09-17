@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createPaymentRequirement } from '@/lib/x402'
+import { createPaymentRequirement, decodePaymentSignature, facilitatorRequest } from '@/lib/x402'
 import { normalizeWallet } from '@/lib/execution'
 
 export async function GET(request: Request) {
@@ -22,10 +22,52 @@ export async function GET(request: Request) {
     })
   }
 
+  const payload = decodePaymentSignature(paymentSignature)
+  if (!payload) return NextResponse.json({ error: 'Invalid PAYMENT-SIGNATURE encoding.' }, { status: 400 })
+
+  const verification = await facilitatorRequest('/verify', {
+    x402Version: 2,
+    paymentPayload: payload,
+    paymentRequirements: requirements.accepts[0],
+  })
+
+  if (!verification.configured) {
+    return NextResponse.json({
+      status: 'payment_received_for_verification',
+      message: 'Facilitator is not configured. No settlement was attempted.',
+      paymentPresent: true,
+      previewOnly: true,
+    }, { status: 503 })
+  }
+
+  if (!verification.ok) {
+    return NextResponse.json({
+      error: 'Payment verification failed.',
+      facilitator: verification.response,
+      previewOnly: true,
+    }, { status: 402 })
+  }
+
+  const settled = await facilitatorRequest('/settle', {
+    x402Version: 2,
+    paymentPayload: payload,
+    paymentRequirements: requirements.accepts[0],
+  })
+
+  if (!settled.ok) {
+    return NextResponse.json({
+      error: 'Payment verified but settlement failed.',
+      facilitator: settled.response,
+      previewOnly: false,
+    }, { status: 502 })
+  }
+
   return NextResponse.json({
-    status: 'payment_received_for_verification',
-    message: 'Payment signature received. Configure an x402 facilitator before settlement.',
+    status: 'paid',
+    message: 'x402 payment settled successfully.',
     paymentPresent: true,
-    previewOnly: true,
+    settlement: settled.response,
+  }, {
+    headers: { 'PAYMENT-RESPONSE': Buffer.from(JSON.stringify(settled.response)).toString('base64') },
   })
 }
