@@ -1,6 +1,7 @@
 import type { ExecutionRecord } from '@/lib/execution'
 import type { AuditEvent } from '@/lib/audit'
 import {
+  findPersistentAudit,
   findPersistentByIdempotency,
   findPersistentExecution,
   persistAudit,
@@ -60,7 +61,11 @@ class ExecutionStoreImpl implements ExecutionStore {
   }
 
   async getAudit(executionId: string) {
-    return this.audits.get(executionId) ?? []
+    const memory = this.audits.get(executionId)
+    if (memory?.length) return memory
+    const persistent = await findPersistentAudit(executionId)
+    this.audits.set(executionId, persistent)
+    return persistent
   }
 }
 
