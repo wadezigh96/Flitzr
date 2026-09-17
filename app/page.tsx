@@ -163,35 +163,35 @@ export default function Home() {
   return (
     <main className="shell">
       <nav className="nav">
-        <div className="brandWrap"><div className="brandMark">F</div><div><div className="brand">FLITZR</div><div className="brandSub">AUTONOMOUS FINANCE</div></div></div>
+        <div className="brandWrap"><div className="brandMark">F</div><div><div className="brand">FLITZR</div><div className="brandSub">DEFENCIAL · AUTONOMOUS FINANCE</div></div></div>
         <div className="navRight"><div className="live"><span /> BASE MAINNET · LIVE</div><button className="walletButton" onClick={authenticated ? logoutWallet : connectWallet}>{authenticated ? `${shortWallet} · Sign out` : wallet ? 'Sign in wallet' : shortWallet}</button></div>
       </nav>
 
       <section className="hero">
-        <div><div className="eyebrow">Policy-first onchain agent</div><h1>Your money.<br /><span>Your policies.</span><br />Your agent.</h1><p>Turn a financial goal into a controlled execution plan. Flitzr separates intent, policy, approval, routing, and settlement.</p></div>
+        <div><div className="eyebrow">Defencial-first onchain agent</div><h1>Your money.<br /><span>Your Defencial.</span><br />Your agent.</h1><p>Turn a financial goal into a controlled execution plan. Flitzr separates intent, Defencial, approval, routing, and settlement.</p></div>
         <div className="heroPanel"><div className="panelLabel">SYSTEM STATUS</div><div className="systemRow"><span className="pulse" /><strong>{authenticated ? 'Wallet authenticated' : 'Agent operational'}</strong></div><div className="systemMeta">Preview-first execution · Base · SIWE protected</div></div>
       </section>
 
       <section className="metrics">
-        <div className="metric"><span>AGENT</span><strong>READY</strong><small>Policy engine online</small></div>
+        <div className="metric"><span>AGENT</span><strong>READY</strong><small>Defencial engine online</small></div>
         <div className="metric"><span>NETWORK</span><strong>BASE</strong><small>Chain ID 8453</small></div>
         <div className="metric"><span>SINGLE LIMIT</span><strong>$25</strong><small>Approval above limit</small></div>
-        <div className="metric"><span>DAILY BUDGET</span><strong>$100</strong><small>Policy-controlled</small></div>
+        <div className="metric"><span>DAILY BUDGET</span><strong>$100</strong><small>Defencial-controlled</small></div>
       </section>
 
       <section className="dashboardGrid">
         <div className="card askCard">
           <div className="sectionHead"><div><div className="sectionKicker">01 · COMMAND</div><h2>Ask Flitzr</h2></div><span className="modeTag">PREVIEW MODE</span></div>
-          <p className="muted">Describe what you want your agent to do. Policy is checked before a provider quote is prepared.</p>
+          <p className="muted">Describe what you want your agent to do. Defencial is checked before a provider quote is prepared.</p>
           <div className="agent"><input value={prompt} onChange={e => { setPrompt(e.target.value); setResult(null) }} onKeyDown={e => e.key === 'Enter' && runAgent()} placeholder="DCA $20 of ETH every week" /><button onClick={runAgent} disabled={loading}>{loading ? 'Planning…' : 'Plan execution →'}</button></div>
           <div className="examples"><button onClick={() => setPrompt('DCA $20 of ETH every week')}>DCA $20 ETH weekly</button><button onClick={() => setPrompt('Limit buy $20 of ETH')}>Limit buy $20 ETH</button><button onClick={() => setPrompt('Swap $10 to ETH')}>Swap $10 to ETH</button></div>
           {walletError && <p className="error">{walletError}</p>}
           {result?.error && <p className="error">{result.error}</p>}
           {result?.plan && (
             <div className="result">
-              <div className="resultTop"><div><span className="resultLabel">PROPOSED ACTION</span><strong>{result.plan.intent.type.toUpperCase()}</strong></div><span className={result.plan.policy.allowed ? 'okBadge' : 'blockedBadge'}>{result.plan.policy.needsApproval ? 'APPROVAL REQUIRED' : result.plan.policy.allowed ? 'POLICY OK' : 'BLOCKED'}</span></div>
-              <p>{result.plan.policy.reason}</p>
-              <div className="chips"><span>Base</span><span>{result.plan.intent.amountUsd === null ? 'Amount needed' : `$${result.plan.intent.amountUsd}`}</span><span>{result.plan.policy.allowed ? 'Within policy' : 'Policy blocked'}</span><span>Quote preview</span></div>
+              <div className="resultTop"><div><span className="resultLabel">PROPOSED ACTION</span><strong>{result.plan.intent.type.toUpperCase()}</strong></div><span className={result.plan.policy.allowed ? 'okBadge' : 'blockedBadge'}>{result.plan.policy.needsApproval ? 'APPROVAL REQUIRED' : result.plan.policy.allowed ? 'DEFENCIAL OK' : 'BLOCKED'}</span></div>
+              <p>{result.plan.policy.reason.replaceAll('policy', 'Defencial').replaceAll('Policy', 'Defencial')}</p>
+              <div className="chips"><span>Base</span><span>{result.plan.intent.amountUsd === null ? 'Amount needed' : `$${result.plan.intent.amountUsd}`}</span><span>{result.plan.policy.allowed ? 'Within Defencial' : 'Defencial blocked'}</span><span>Quote preview</span></div>
               {result.quote?.message && <small>{result.quote.message}</small>}
               {result.quote?.quoteId && <small>Quote ready: {result.quote.quoteId}</small>}
               {result.execution?.state === 'awaiting_approval' && <button className="approveButton" onClick={approve} disabled={approvalLoading}>{approvalLoading ? 'Approving…' : 'Approve execution'}</button>}
@@ -208,9 +208,9 @@ export default function Home() {
         </div>
 
         <aside className="card policyCard">
-          <div className="sectionHead"><div><div className="sectionKicker">02 · GUARDRAILS</div><h2>Agent policy</h2></div><span className="shield">✓</span></div>
+          <div className="sectionHead"><div><div className="sectionKicker">02 · GUARDRAILS</div><h2>Defencial guardrails</h2></div><span className="shield">✓</span></div>
           <div className="policy"><div><span>Network</span><strong>Base Mainnet</strong></div><div><span>Single trade</span><strong>$25 max</strong></div><div><span>Daily budget</span><strong>$100 max</strong></div><div><span>Approval gate</span><strong>&gt; $25</strong></div></div>
-          <div className="policyNote"><span className="dotGreen" /> Deterministic policy · independent of AI</div>
+          <div className="policyNote"><span className="dotGreen" /> Deterministic Defencial · independent of AI</div>
         </aside>
       </section>
 
@@ -224,17 +224,17 @@ export default function Home() {
       {result?.execution && (
         <section className="card timelineCard">
           <div className="sectionHead"><div><div className="sectionKicker">04 · OPERATIONS</div><h2>Execution timeline</h2></div><span className="stateBadge">{result.execution.state.replace('_', ' ')}</span></div>
-          <div className="timeline">{states.map((state, index) => <div className={`step ${index <= stateIndex ? 'active' : ''}`} key={state}><span className="dot" /><div><strong>{state.replace('_', ' ')}</strong><small>{state === 'awaiting_approval' ? 'Policy approval gate' : state === 'quoted' ? 'Provider quote prepared' : state === 'signing' ? 'Wallet signing in progress' : state === 'submitted' ? 'Provider accepted the order' : state === 'confirmed' ? 'Chain confirmation' : 'Execution state'}</small></div></div>)}</div>
+          <div className="timeline">{states.map((state, index) => <div className={`step ${index <= stateIndex ? 'active' : ''}`} key={state}><span className="dot" /><div><strong>{state.replace('_', ' ')}</strong><small>{state === 'awaiting_approval' ? 'Defencial approval gate' : state === 'quoted' ? 'Provider quote prepared' : state === 'signing' ? 'Wallet signing in progress' : state === 'submitted' ? 'Provider accepted the order' : state === 'confirmed' ? 'Chain confirmation' : 'Execution state'}</small></div></div>)}</div>
           <p className="previewNote">Signing is an explicit wallet action. Flitzr never receives or stores your private key.</p>
         </section>
       )}
 
       <section className="lowerGrid">
-        <div className="card activityCard"><div className="sectionHead"><div><div className="sectionKicker">05 · AUDIT</div><h2>Activity</h2></div><span className="liveSmall">SESSION</span></div><div className="activity"><div><span className="activityDot green" /><div><strong>Policy engine</strong><span>{result ? 'Request evaluated against Base guardrails' : 'Waiting for a command'}</span></div><time>NOW</time></div><div><span className="activityDot" /><div><strong>Execution layer</strong><span>{result?.execution ? `${result.execution.provider || 'provider'} · ${result.execution.state}` : 'No execution created'}</span></div><time>—</time></div><div><span className="activityDot" /><div><strong>Settlement</strong><span>{result?.execution?.state === 'submitted' ? 'Provider submission recorded' : 'Broadcast disabled until explicit signing'}</span></div><time>{result?.execution?.state === 'submitted' ? 'LIVE' : 'SAFE'}</time></div></div></div>
+        <div className="card activityCard"><div className="sectionHead"><div><div className="sectionKicker">05 · AUDIT</div><h2>Activity</h2></div><span className="liveSmall">SESSION</span></div><div className="activity"><div><span className="activityDot green" /><div><strong>Defencial engine</strong><span>{result ? 'Request evaluated against Base guardrails' : 'Waiting for a command'}</span></div><time>NOW</time></div><div><span className="activityDot" /><div><strong>Execution layer</strong><span>{result?.execution ? `${result.execution.provider || 'provider'} · ${result.execution.state}` : 'No execution created'}</span></div><time>—</time></div><div><span className="activityDot" /><div><strong>Settlement</strong><span>{result?.execution?.state === 'submitted' ? 'Provider submission recorded' : 'Broadcast disabled until explicit signing'}</span></div><time>{result?.execution?.state === 'submitted' ? 'LIVE' : 'SAFE'}</time></div></div></div>
         <div className="card treasuryCard"><div className="sectionHead"><div><div className="sectionKicker">06 · TREASURY</div><h2>Wallet session</h2></div><span className="shield">✓</span></div><div className="treasuryValue">{wallet ? `${wallet.slice(0, 6)}…${wallet.slice(-4)}` : 'Not connected'}</div><p className="muted">{authenticated ? 'Wallet authenticated with signed SIWE. Sponsor API keys never enter the client.' : 'Connect and sign in before planning an execution.'}</p><button className="secondaryButton" onClick={authenticated ? logoutWallet : connectWallet}>{authenticated ? 'End wallet session' : 'Connect & sign in'}</button></div>
       </section>
 
-      <footer><div>FLITZR <span>·</span> RUNTIME AGENT WEEK BUILD</div><div>POLICY-FIRST · SIGNATURE-GATED · BASE</div></footer>
+      <footer><div>FLITZR <span>·</span> RUNTIME AGENT WEEK BUILD</div><div>DEFENCIAL · SIGNATURE-GATED · BASE</div></footer>
     </main>
   )
 }
