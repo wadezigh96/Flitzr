@@ -8,7 +8,10 @@ const nonces = new Map<string, { nonce: string; expiresAt: number }>()
 type Session = { address: string; issuedAt: number; expiresAt: number }
 
 function secret() {
-  return process.env.AUTH_SECRET || 'flitzr-dev-only-change-me'
+  const value = process.env.AUTH_SECRET
+  if (value) return value
+  if (process.env.NODE_ENV === 'production') throw new Error('AUTH_SECRET is required in production.')
+  return 'flitzr-dev-only-change-me'
 }
 
 export function createNonce(address: string) {
@@ -36,6 +39,8 @@ export async function verifySiwe(address: string, message: string, signature: `0
   const expectedHost = new URL(expectedOrigin).host
   if (!message.startsWith(`${expectedHost} wants you to sign in with your Ethereum account:\n${normalized}\n`)) return false
   if (!message.includes(`URI: ${expectedOrigin}\n`) || !message.includes(`Version: 1\nChain ID: ${CHAIN_ID}\nNonce: ${nonce}\n`)) return false
+  const expirationLine = message.match(/\nExpiration Time: ([^\n]+)/)?.[1]
+  if (!expirationLine || Number.isNaN(Date.parse(expirationLine)) || Date.parse(expirationLine) < Date.now()) return false
   const ok = await verifyMessage({ address: normalized, message, signature })
   if (!ok) return false
   return consumeNonce(normalized, nonce)
