@@ -87,11 +87,7 @@ contract FlitzrAgentUtilityTest is Test {
 
         vm.prank(agent);
         vm.expectRevert(
-            abi.encodeWithSelector(
-                FlitzrAgentUtility.AgentLimitExceeded.selector,
-                41 ether,
-                40 ether
-            )
+            abi.encodeWithSelector(FlitzrAgentUtility.AgentLimitExceeded.selector, 41 ether, 40 ether)
         );
         token.agentPay(recipient, 41 ether, keccak256("payment-too-large"));
     }
@@ -138,24 +134,22 @@ contract FlitzrAgentUtilityTest is Test {
         vm.prank(agent);
         token.agentPay(recipient, LIMIT, keccak256("full-limit"));
 
-        (, uint256 spentBefore, ) = token.agentPolicies(agent);
+        (, uint256 spentBefore,) = token.agentPolicies(agent);
         assertEq(spentBefore, LIMIT);
 
         vm.prank(admin);
         token.resetAgentSpend(agent);
 
-        (, uint256 spentAfter, ) = token.agentPolicies(agent);
+        (, uint256 spentAfter,) = token.agentPolicies(agent);
         assertEq(spentAfter, 0);
     }
 
     function testAgentCannotMint() public {
         // The contract deliberately exposes no public mint function.
         // This low-level call confirms an arbitrary mint selector is not callable.
-        bytes memory callData = abi.encodeWithSignature(
-            "mint(address,uint256)", recipient, 1 ether
-        );
+        bytes memory callData = abi.encodeWithSignature("mint(address,uint256)", recipient, 1 ether);
 
-        (bool success, ) = address(token).call(callData);
+        (bool success,) = address(token).call(callData);
         assertFalse(success);
         assertEq(token.totalSupply(), 1_000_000_000 ether);
     }
