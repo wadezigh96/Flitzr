@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const execution = createExecution({ intent: intent.type, amountUsd: intent.amountUsd, ownerWallet, provider: intent.type === 'dca' || intent.type === 'limit' ? 'definitive' : 'uniswap' })
     const next = defencial.needsApproval ? transition(execution, 'awaiting_approval') : execution
     await executionStore.put(next, idempotencyKey)
-    await executionStore.addAudit(auditEvent(next.id, 'defencial_checked', { wallet: ownerWallet, amountUsd: intent.amountUsd, intent: intent.type }))
+    await executionStore.addAudit(auditEvent(next.id, 'policy_checked', { wallet: ownerWallet, amountUsd: intent.amountUsd, intent: intent.type }))
     await executionStore.addAudit(auditEvent(next.id, 'planned', { wallet: ownerWallet, amountUsd: next.amountUsd, provider: next.provider ?? 'unknown' }))
     if (defencial.needsApproval) await executionStore.addAudit(auditEvent(next.id, 'approval_requested', { thresholdUsd: DEFAULT_DEFENCIAL.approvalAboveUsd }))
     return NextResponse.json({ defencial, execution: next, previewOnly: true })
