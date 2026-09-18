@@ -24,8 +24,8 @@ export default function BaseDeFi() {
   const { ready, authenticated, connectOrCreateWallet, logout, getAccessToken } = usePrivy()
   const { wallets } = useWallets()
   const [tab, setTab] = useState<'swap' | 'tokenize'>('swap')
-  const [sellToken, setSellToken] = useState(BASE_TOKENS[0].address)
-  const [buyToken, setBuyToken] = useState(BASE_TOKENS[1].address)
+  const [sellToken, setSellToken] = useState<string>(BASE_TOKENS[0].address)
+  const [buyToken, setBuyToken] = useState<string>(BASE_TOKENS[1].address)
   const [amount, setAmount] = useState('0.001')
   const [sellBalance, setSellBalance] = useState('—')
   const [sellDecimals, setSellDecimals] = useState(18)
@@ -41,7 +41,22 @@ export default function BaseDeFi() {
   const [quoteTick, setQuoteTick] = useState(0)
 
   const wallet = authenticated ? (wallets[0]?.address?.toLowerCase() || '') : ''
-  const ethProvider = wallets[0]?.getEthereumProvider?.()
+  const [ethProvider, setEthProvider] = useState<any>(null)
+
+  useEffect(() => {
+    let active = true
+    const currentWallet = wallets[0]
+    if (!currentWallet?.getEthereumProvider) {
+      setEthProvider(null)
+      return () => { active = false }
+    }
+    void currentWallet.getEthereumProvider().then((provider: any) => {
+      if (active) setEthProvider(provider)
+    }).catch(() => {
+      if (active) setEthProvider(null)
+    })
+    return () => { active = false }
+  }, [wallets])
 
   function selectedToken(address: string) {
     return BASE_TOKENS.find(token => token.address.toLowerCase() === address.toLowerCase())
