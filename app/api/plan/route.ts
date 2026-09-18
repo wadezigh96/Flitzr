@@ -13,6 +13,7 @@ export async function POST(request: Request) {
         chain: 'Base',
         intent,
         defencial,
+        policy: defencial,
         execution: 'preview-only',
         nextStep: defencial.allowed ? 'Prepare a provider quote after approval when required.' : 'Defencial blocked this execution request.',
       },
