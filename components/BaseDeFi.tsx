@@ -45,6 +45,8 @@ export default function BaseDeFi() {
   const [quoteAt, setQuoteAt] = useState<number | null>(null)
   const [reviewing, setReviewing] = useState(false)
   const [quoteTick, setQuoteTick] = useState(0)
+  const [comparison, setComparison] = useState<{ uniswap: QuoteData | null; aerodrome: QuoteData | null }>({ uniswap: null, aerodrome: null })
+  const [comparing, setComparing] = useState(false)
 
   const wallet = authenticated ? (wallets[0]?.address?.toLowerCase() || '') : ''
   const ethProvider = wallets[0]?.getEthereumProvider?.()
@@ -127,6 +129,28 @@ export default function BaseDeFi() {
     throw new Error('Aerodrome could not find a liquid route for this pair.')
   }
 
+  async function compareRoutes() {
+    setError(''); setStatus(''); setComparison({ uniswap: null, aerodrome: null })
+    if (!wallet || !authenticated) return setError('Connect your Privy wallet first.')
+    if (!/^0x[a-fA-F0-9]{40}$/.test(sellToken) || !/^0x[a-fA-F0-9]{40}$/.test(buyToken)) return setError('Enter valid Base token contract addresses.')
+    if (!/^\\d*\\.?\\d+$/.test(amount) || Number(amount) <= 0) return setError('Amount must be greater than 0.')
+    setComparing(true)
+    try {
+      const rawAmount = BigInt(Math.round(Number(amount) * 10 ** sellDecimals)).toString()
+      const [aerodrome, uniswap] = await Promise.all([
+        getAerodromeQuote(rawAmount).catch(() => null),
+        (async () => {
+          const response = await fetch('/api/quote', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ sellToken, buyToken, amount: rawAmount, orderType: 'market', swapper: wallet, provider: 'uniswap' }) })
+          const json = await response.json()
+          return response.ok ? json : null
+        })(),
+      ])
+      setComparison({ uniswap, aerodrome })
+      if (!uniswap && !aerodrome) throw new Error('No route quote is currently available.')
+      setStatus('Route comparison ready. Compare output, route and provider before choosing.')
+    } catch (e) { setError(e instanceof Error ? e.message : 'Route comparison failed.') } finally { setComparing(false) }
+  }
+
   async function getQuote() {
     setError(''); setStatus(''); setQuote(null)
     if (!wallet || !authenticated) return setError('Connect your Privy wallet first.')
@@ -197,7 +221,26 @@ export default function BaseDeFi() {
         <div className="stockField"><label>BUY TOKEN · BASE</label><select value={buyToken} onChange={e => setBuyToken(e.target.value)}>{BASE_TOKENS.map(token => <option key={token.address} value={token.address}>{token.symbol} · {token.name}</option>)}<option value="custom">Custom contract…</option></select>{!BASE_TOKENS.some(token => token.address.toLowerCase() === buyToken.toLowerCase()) && <input style={{ marginTop: 8 }} value={buyToken} onChange={e => setBuyToken(e.target.value)} placeholder="0x… token contract" />}</div>
       </div>
       <div className="stockControls"><div className="stockField"><label>AMOUNT · {selectedToken(sellToken)?.symbol || "TOKEN"}</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /><small style={{ display: "block", marginTop: 6 }}>Balance: {sellBalance} {selectedToken(sellToken)?.symbol || ""} · {sellDecimals} decimals <button type="button" className="secondaryButton" style={{ marginLeft: 6, padding: "2px 7px" }} onClick={() => setAmount(sellBalance.replace(/,/g, ""))} disabled={sellBalance === "—"}>MAX</button></small></div><div className="stockField"><label>QUOTE ROUTER</label><select value={provider} onChange={e => setProvider(e.target.value as 'uniswap' | 'bankr')}><option value="uniswap">Uniswap</option><option value="aerodrome">Aerodrome · onchain route</option><option value="bankr">Bankr · quote</option></select></div></div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}><button className="secondaryButton" onClick={wallet ? disconnect : connect} disabled={!ready}>{wallet ? `${wallet.slice(0,6)}…${wallet.slice(-4)} · Disconnect` : 'Connect Base wallet'}</button><button className="approveButton" onClick={getQuote} disabled={loading || !authenticated}>{loading ? 'Quoting…' : 'Get swap quote'}</button></div>
+      <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}><button className="secondaryButton" onClick={wallet ? disconnect : connect} disabled={!ready}>{wallet ? `${wallet.slice(0,6)}…${wallet.slice(-4)} · Disconnect` : 'Connect Base wallet'}</button><button className="approveButton" onClick={getQuote} disabled={loading || !authenticated}>{loading ? 'Quoting…' : 'Get swap quote'}</button><button className="secondaryButton" onClick={compareRoutes} disabled={comparing || !authenticated}>{comparing ? 'Comparing…' : 'Compare routes'}</button></div>
+      {(comparison.uniswap || comparison.aerodrome) && <div className="result" style={{ marginTop: 12 }}>
+        <strong>Route Comparison</strong>
+        <small style={{ display: 'block', marginTop: 4 }}>Same input · Base Mainnet · live provider quotes</small>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 8, marginTop: 10 }}>
+          {(['uniswap','aerodrome'] as const).map(name => {
+            const item = comparison[name]
+            return <div key={name} className="result">
+              <small>{name === 'uniswap' ? 'UNISWAP' : 'AERODROME'}</small>
+              {item ? <>
+                <strong>{formatRawAmount(item.quote?.amountOut, buyDecimals)} {selectedToken(buyToken)?.symbol || 'TOKEN'}</strong>
+                <small style={{ display: 'block', marginTop: 5 }}>Route: {item.routing || 'Direct'}</small>
+                <small style={{ display: 'block' }}>Slippage: {item.quote?.slippageTolerance ?? 0.5}%</small>
+                <small style={{ display: 'block' }}>Quote ID: {item.quote?.quoteId || 'provider response'}</small>
+              </> : <small style={{ display: 'block', marginTop: 6 }}>No quote available for this pair.</small>}
+            </div>
+          })}
+        </div>
+      </div>}
+
       {quote && <div className="result" style={{ marginTop: 12 }}>
         <strong>Swap quote</strong>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 8, marginTop: 10 }}>
