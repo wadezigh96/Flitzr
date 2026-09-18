@@ -34,8 +34,24 @@ export default function Home() {
 
   async function connectWallet() {
     setWalletError('')
-    try { await connectOrCreateWallet() }
-    catch (error) { setWalletError(error instanceof Error ? error.message : 'Privy wallet connection failed.') }
+    try {
+      await connectOrCreateWallet()
+    } catch (error) {
+      setWalletError(error instanceof Error ? error.message : 'Privy wallet connection failed.')
+    }
+  }
+
+  async function readJsonResponse(response: Response, fallback: string) {
+    const contentType = response.headers.get('content-type') || ''
+    const body = await response.text()
+    if (!contentType.includes('application/json')) {
+      throw new Error(response.ok ? fallback : 'Server returned ' + response.status + '. Please refresh and try again.')
+    }
+    try {
+      return JSON.parse(body)
+    } catch {
+      throw new Error(fallback)
+    }
   }
 
   async function logoutWallet() {
@@ -52,9 +68,9 @@ export default function Home() {
     setLoading(true); setResult(null); setWalletError('')
     try {
       const planResponse = await fetch('/api/plan', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ prompt }) })
-      const planData = await planResponse.json()
+      const planData = await readJsonResponse(planResponse, 'Planner returned an invalid response.')
       const executionResponse = await fetch('/api/execution', { method: 'POST', headers: await authHeaders({ 'Idempotency-Key': crypto.randomUUID() }), body: JSON.stringify({ prompt, walletAddress: wallet }) })
-      const executionData = await executionResponse.json()
+      const executionData = await readJsonResponse(executionResponse, 'Execution API returned an invalid response.')
       setResult({ ...planData, execution: executionData.execution, error: planData.error || executionData.error })
     } catch (error) { setResult({ error: error instanceof Error ? error.message : 'Could not reach the Flitzr planner.' }) }
     finally { setLoading(false) }
@@ -65,7 +81,7 @@ export default function Home() {
     setApprovalLoading(true)
     try {
       const response = await fetch('/api/execution/approve', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ executionId: result.execution.id, approval: true, walletAddress: wallet }) })
-      const data = await response.json()
+      const data = await readJsonResponse(response, 'Flitzr API returned an invalid response.')
       if (!response.ok) return setResult(prev => ({ ...prev, error: data.error || 'Approval failed' }))
       setResult(prev => ({ ...prev, execution: data.execution, error: undefined }))
     } catch (error) { setResult(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Approval failed' })) }
@@ -77,7 +93,7 @@ export default function Home() {
     setQuoteLoading(true)
     try {
       const response = await fetch('/api/execution/quote', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ executionId: result.execution.id, walletAddress: wallet }) })
-      const data = await response.json()
+      const data = await readJsonResponse(response, 'Flitzr API returned an invalid response.')
       if (!response.ok) return setResult(prev => ({ ...prev, error: data.error || 'Quote failed' }))
       setResult(prev => ({ ...prev, execution: data.execution, quote: data.quote, error: undefined }))
     } catch (error) { setResult(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Quote failed' })) }
@@ -92,12 +108,12 @@ export default function Home() {
       if (!walletObject) throw new Error('Privy wallet is not available.')
       await walletObject.switchChain(8453)
       const payloadResponse = await fetch('/api/execution/signing-payload', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ executionId: result.execution.id, walletAddress: wallet }) })
-      const payloadData = await payloadResponse.json()
+      const payloadData = await readJsonResponse(payloadResponse, 'Signing API returned an invalid response.')
       if (!payloadResponse.ok) throw new Error(payloadData.error || 'Could not prepare signing payload')
       const provider = await walletObject.getEthereumProvider()
       const signature = await provider.request({ method: 'eth_signTypedData_v4', params: [wallet, JSON.stringify(payloadData.typedData)] }) as string
       const submitResponse = await fetch('/api/execution/submit', { method: 'POST', headers: await authHeaders({ 'Idempotency-Key': `submit_${result.execution.id}` }), body: JSON.stringify({ executionId: result.execution.id, walletAddress: wallet, userSignature: signature }) })
-      const submitData = await submitResponse.json()
+      const submitData = await readJsonResponse(submitResponse, 'Submission API returned an invalid response.')
       if (!submitResponse.ok) throw new Error(submitData.error || 'Order submission failed')
       setResult(prev => ({ ...prev, execution: submitData.execution, error: undefined }))
     } catch (error) { setResult(prev => ({ ...prev, error: error instanceof Error ? error.message : 'Signing or submission failed.' })) }
