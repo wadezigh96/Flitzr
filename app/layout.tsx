@@ -33,5 +33,5 @@ export const metadata: Metadata = {
 }
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body><PrivyProvider>{children}</PrivyProvider><BaseDeFi /></body></html>
+  return <html lang="en"><body><PrivyProvider>{children}<BaseDeFi /></PrivyProvider></body></html>
 }
