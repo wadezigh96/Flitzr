@@ -5,10 +5,21 @@ import {
   findPersistentAudit,
   findPersistentByIdempotency,
   findPersistentExecution,
+  findPersistentExecutions,
   persistAudit,
   persistExecution,
   persistIdempotency,
 } from '@/lib/db'
+
+const OPEN_STATES: ExecutionRecord['state'][] = [
+  'planned',
+  'awaiting_approval',
+  'approved',
+  'quoted',
+  'signing',
+  'submitted',
+  'confirmed',
+]
 
 export interface ExecutionStore {
   get(id: string): Promise<ExecutionRecord | undefined>
@@ -18,6 +29,7 @@ export interface ExecutionStore {
   claimIdempotency(key: string, ownerWallet: string, executionId: string): Promise<{ claimed: boolean; sameExecution: boolean; existingExecution?: ExecutionRecord }>
   addAudit(event: AuditEvent): Promise<void>
   getAudit(executionId: string): Promise<AuditEvent[]>
+  spentTodayUsd(ownerWallet: string): Promise<number>
 }
 
 class ExecutionStoreImpl implements ExecutionStore {
@@ -97,6 +109,25 @@ class ExecutionStoreImpl implements ExecutionStore {
     const persistent = await findPersistentAudit(executionId)
     this.audits.set(executionId, persistent)
     return persistent
+  }
+
+  async spentTodayUsd(ownerWallet: string) {
+    const start = new Date()
+    start.setUTCHours(0, 0, 0, 0)
+    const startIso = start.toISOString()
+    const persistent = await findPersistentExecutions(ownerWallet, 50)
+    const merged = new Map<string, ExecutionRecord>()
+    for (const record of this.records.values()) {
+      if (record.ownerWallet === ownerWallet) merged.set(record.id, record)
+    }
+    for (const record of persistent) merged.set(record.id, record)
+    let total = 0
+    for (const record of merged.values()) {
+      if (record.createdAt < startIso) continue
+      if (!OPEN_STATES.includes(record.state)) continue
+      total += record.amountUsd
+    }
+    return total
   }
 }
 

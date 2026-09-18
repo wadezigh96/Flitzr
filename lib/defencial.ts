@@ -29,11 +29,36 @@ export function detectIntent(text: string): OrderIntent {
   return { type, amountUsd, text }
 }
 
-export function evaluateDefencial(intent: OrderIntent, defencial = DEFAULT_DEFENCIAL) {
+export function evaluateDefencial(
+  intent: OrderIntent,
+  defencial = DEFAULT_DEFENCIAL,
+  usage: { spentTodayUsd?: number } = {},
+) {
   const amount = intent.amountUsd
-  if (amount === null) return { allowed: false, needsApproval: false, reason: 'Add a USD amount so Flitzr can evaluate the Defencial.' }
-  if (amount <= 0) return { allowed: false, needsApproval: false, reason: 'Amount must be greater than $0.' }
-  if (amount > defencial.maxDailyUsd) return { allowed: false, needsApproval: false, reason: `Amount exceeds the $${defencial.maxDailyUsd} daily Defencial budget.` }
+  const spentTodayUsd = Math.max(0, usage.spentTodayUsd ?? 0)
+  if (amount === null) {
+    return { allowed: false, needsApproval: false, spentTodayUsd, remainingDailyUsd: defencial.maxDailyUsd, reason: 'Add a USD amount so Flitzr can evaluate the Defencial.' }
+  }
+  if (amount <= 0) {
+    return { allowed: false, needsApproval: false, spentTodayUsd, remainingDailyUsd: defencial.maxDailyUsd - spentTodayUsd, reason: 'Amount must be greater than $0.' }
+  }
+  if (spentTodayUsd + amount > defencial.maxDailyUsd) {
+    return {
+      allowed: false,
+      needsApproval: false,
+      spentTodayUsd,
+      remainingDailyUsd: Math.max(0, defencial.maxDailyUsd - spentTodayUsd),
+      reason: `Amount exceeds the $${defencial.maxDailyUsd} daily Defencial budget (already planned $${spentTodayUsd.toFixed(2)} today).`,
+    }
+  }
   const needsApproval = amount > defencial.approvalAboveUsd
-  return { allowed: true, needsApproval, reason: needsApproval ? `Within daily budget, but user approval is required above $${defencial.approvalAboveUsd}.` : `Within the configured $${defencial.maxSingleTradeUsd} single-trade Defencial.` }
+  return {
+    allowed: true,
+    needsApproval,
+    spentTodayUsd,
+    remainingDailyUsd: defencial.maxDailyUsd - spentTodayUsd - amount,
+    reason: needsApproval
+      ? `Within daily budget, but user approval is required above $${defencial.approvalAboveUsd}.`
+      : `Within the configured $${defencial.maxSingleTradeUsd} single-trade Defencial.`,
+  }
 }

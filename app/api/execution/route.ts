@@ -21,14 +21,15 @@ export async function POST(request: Request) {
     }
 
     const intent = detectIntent(prompt.trim())
-    const defencial = evaluateDefencial(intent, DEFAULT_DEFENCIAL)
+    const spentTodayUsd = await executionStore.spentTodayUsd(ownerWallet)
+    const defencial = evaluateDefencial(intent, DEFAULT_DEFENCIAL, { spentTodayUsd })
     if (intent.amountUsd === null) return NextResponse.json({ error: 'A USD amount is required before creating an execution.' }, { status: 400 })
     if (!defencial.allowed) return NextResponse.json({ defencial, execution: null }, { status: 403 })
 
     const execution = createExecution({ intent: intent.type, amountUsd: intent.amountUsd, ownerWallet, provider: intent.type === 'dca' || intent.type === 'limit' ? 'definitive' : 'uniswap' })
     const next = defencial.needsApproval ? transition(execution, 'awaiting_approval') : execution
     await executionStore.put(next, idempotencyKey)
-    await executionStore.addAudit(auditEvent(next.id, 'policy_checked', { wallet: ownerWallet, amountUsd: intent.amountUsd, intent: intent.type }))
+    await executionStore.addAudit(auditEvent(next.id, 'defencial_checked', { wallet: ownerWallet, amountUsd: intent.amountUsd, intent: intent.type, spentTodayUsd }))
     await executionStore.addAudit(auditEvent(next.id, 'planned', { wallet: ownerWallet, amountUsd: next.amountUsd, provider: next.provider ?? 'unknown' }))
     if (defencial.needsApproval) await executionStore.addAudit(auditEvent(next.id, 'approval_requested', { thresholdUsd: DEFAULT_DEFENCIAL.approvalAboveUsd }))
     return NextResponse.json({ defencial, execution: next, previewOnly: true })
