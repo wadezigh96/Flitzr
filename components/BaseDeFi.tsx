@@ -19,7 +19,7 @@ const BASE_TOKENS = [
 const UNISWAP_PROXY_APPROVAL = '0x0000000085E102724e78eCd2F45DC9cA239Affad'
 const MAX_UINT256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 
-type QuoteData = { provider?: string; quote?: { quoteId?: string }; routing?: string }
+type QuoteData = { provider?: string; routing?: string; quote?: { quoteId?: string; amountIn?: string; amountOut?: string; amountOutMin?: string; slippageTolerance?: number; route?: unknown; gasUseEstimateQuote?: string; gasUseEstimate?: string; priceImpact?: number | string } }
 type SwapData = { transaction?: { to: string; data: string; value?: string; gasLimit?: string; gasPrice?: string; maxFeePerGas?: string; maxPriorityFeePerGas?: string }; routing?: string; requestId?: string }
 
 export default function BaseDeFi() {
@@ -140,7 +140,18 @@ export default function BaseDeFi() {
       </div>
       <div className="stockControls"><div className="stockField"><label>AMOUNT · {selectedToken(sellToken)?.symbol || "TOKEN"}</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /><small style={{ display: "block", marginTop: 6 }}>Balance: {sellBalance} {selectedToken(sellToken)?.symbol || ""} · {sellDecimals} decimals <button type="button" className="secondaryButton" style={{ marginLeft: 6, padding: "2px 7px" }} onClick={() => setAmount(sellBalance.replace(/,/g, ""))} disabled={sellBalance === "—"}>MAX</button></small></div><div className="stockField"><label>QUOTE ROUTER</label><select value={provider} onChange={e => setProvider(e.target.value as 'uniswap' | 'bankr')}><option value="uniswap">Uniswap</option><option value="bankr">Bankr · quote</option></select></div></div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}><button className="secondaryButton" onClick={wallet ? disconnect : connect} disabled={!ready}>{wallet ? `${wallet.slice(0,6)}…${wallet.slice(-4)} · Disconnect` : 'Connect Base wallet'}</button><button className="approveButton" onClick={getQuote} disabled={loading || !authenticated}>{loading ? 'Quoting…' : 'Get swap quote'}</button></div>
-      {quote && <div className="result" style={{ marginTop: 12 }}><strong>{String(quote.provider || provider).toUpperCase()} quote ready</strong><small>Base Mainnet · {quote.routing || 'preview'} · quote ID: {quote.quote?.quoteId || 'provider response'}</small><div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{provider === 'uniswap' && <><button className="secondaryButton" onClick={approveToken} disabled={executing}>Approve input token</button><button className="approveButton" onClick={executeSwap} disabled={executing}>{executing ? 'Waiting…' : 'Review & execute swap'}</button></>}</div></div>}
+      {quote && <div className="result" style={{ marginTop: 12 }}>
+        <strong>Swap quote</strong>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 8, marginTop: 10 }}>
+          <div className="result"><small>You Pay</small><strong>{amount} {selectedToken(sellToken)?.symbol || 'TOKEN'}</strong></div>
+          <div className="result"><small>You Receive</small><strong>{quote.quote?.amountOut ? quote.quote.amountOut : 'Provider quote'} {selectedToken(buyToken)?.symbol || 'TOKEN'}</strong></div>
+          <div className="result"><small>Route</small><strong>{quote.routing || 'Direct'}</strong></div>
+          <div className="result"><small>Provider</small><strong>{String(quote.provider || provider).toUpperCase()}</strong></div>
+          <div className="result"><small>Slippage</small><strong>{quote.quote?.slippageTolerance ?? 0.5}%</strong></div>
+          <div className="result"><small>Quote ID</small><strong style={{ overflowWrap: 'anywhere' }}>{quote.quote?.quoteId || 'Provider response'}</strong></div>
+        </div>
+        <small style={{ display: 'block', marginTop: 10 }}>Base Mainnet · Review the quoted output and route before signing.</small>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{provider === 'uniswap' && <><button className="secondaryButton" onClick={approveToken} disabled={executing}>Approve input token</button><button className="approveButton" onClick={executeSwap} disabled={executing}>{executing ? 'Waiting…' : 'Review & execute swap'}</button></>}</div></div>}
     </div>}
 
     {tab === 'stake' && <div style={{ marginTop: 16 }} className="result"><strong>Aerodrome staking & liquidity</strong><p className="muted">Aerodrome supports Base swaps, liquidity deposits and staking/emissions. AERO can also be locked into veAERO for voting and fee participation.</p><div className="chips"><span>Base</span><span>AERO / veAERO</span><span>LP staking</span><span>Explicit wallet approval</span></div><div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}><a className="secondaryButton" href={AERODROME} target="_blank" rel="noreferrer">Open Aerodrome ↗</a><a className="secondaryButton" href={AERO_LAUNCH} target="_blank" rel="noreferrer">Launch liquidity ↗</a></div></div>}
