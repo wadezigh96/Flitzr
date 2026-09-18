@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { encodeFunctionData, decodeFunctionResult } from 'viem'
 import { usePrivy, useWallets } from '@privy-io/react-auth'
 
 const AERODROME = 'https://aerodrome.finance/'
@@ -16,8 +17,11 @@ const BASE_TOKENS = [
   { symbol: 'wstETH', name: 'Wrapped stETH', address: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452' },
 ] as const
 
+const AERODROME_ROUTER = '0xcF77a3Ba9A5CA399B7c97c74d54e5b1Beb874E43'
+const AERODROME_FACTORY = '0x420DD381b31aEf6683db6B902084cB0FFECe40Da'
 const UNISWAP_PROXY_APPROVAL = '0x0000000085E102724e78eCd2F45DC9cA239Affad'
 const MAX_UINT256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
+const AERODROME_ABI = [{ type: 'function', name: 'getAmountsOut', stateMutability: 'view', inputs: [{ name: 'amountIn', type: 'uint256' }, { name: 'routes', type: 'tuple[]', components: [{ name: 'from', type: 'address' }, { name: 'to', type: 'address' }, { name: 'stable', type: 'bool' }, { name: 'factory', type: 'address' }] }], outputs: [{ name: 'amounts', type: 'uint256[]' }] }] as const
 
 type QuoteData = { provider?: string; routing?: string; quote?: { quoteId?: string; amountIn?: string; amountOut?: string; amountOutMin?: string; slippageTolerance?: number; route?: unknown; gasUseEstimateQuote?: string; gasUseEstimate?: string; priceImpact?: number | string } }
 type SwapData = { transaction?: { to: string; data: string; value?: string; gasLimit?: string; gasPrice?: string; maxFeePerGas?: string; maxPriorityFeePerGas?: string }; routing?: string; requestId?: string }
@@ -32,7 +36,7 @@ export default function BaseDeFi() {
   const [sellBalance, setSellBalance] = useState('—')
   const [sellDecimals, setSellDecimals] = useState(18)
   const [buyDecimals, setBuyDecimals] = useState(6)
-  const [provider, setProvider] = useState<'uniswap' | 'bankr'>('uniswap')
+  const [provider, setProvider] = useState<'uniswap' | 'aerodrome' | 'bankr'>('uniswap')
   const [quote, setQuote] = useState<QuoteData | null>(null)
   const [loading, setLoading] = useState(false)
   const [executing, setExecuting] = useState(false)
@@ -101,6 +105,28 @@ export default function BaseDeFi() {
     return { 'content-type': 'application/json', Authorization: `Bearer ${token}` }
   }
 
+  async function getAerodromeQuote(rawAmount: string) {
+    if (!ethProvider) throw new Error('Privy wallet provider is not available.')
+    const weth = BASE_TOKENS[0].address
+    const stablePair = [sellToken, buyToken].every(address => [BASE_TOKENS[1].address, BASE_TOKENS[2].address].some(stable => stable.toLowerCase() === address.toLowerCase()))
+    const candidates = [
+      [{ from: sellToken, to: buyToken, stable: stablePair, factory: AERODROME_FACTORY }],
+      ...(sellToken.toLowerCase() !== weth.toLowerCase() && buyToken.toLowerCase() !== weth.toLowerCase()
+        ? [[{ from: sellToken, to: weth, stable: false, factory: AERODROME_FACTORY }, { from: weth, to: buyToken, stable: false, factory: AERODROME_FACTORY }]]
+        : []),
+    ]
+    for (const routes of candidates) {
+      try {
+        const data = encodeFunctionData({ abi: AERODROME_ABI, functionName: 'getAmountsOut', args: [BigInt(rawAmount), routes as any] })
+        const result = await ethProvider.request({ method: 'eth_call', params: [{ to: AERODROME_ROUTER, data }, 'latest'] }) as string
+        const amounts = decodeFunctionResult({ abi: AERODROME_ABI, functionName: 'getAmountsOut', data: result as `0x${string}` }) as readonly bigint[]
+        const output = amounts[amounts.length - 1] || 0n
+        if (output > 0n) return { provider: 'aerodrome', routing: routes.length > 1 ? 'Aerodrome · 2-hop via WETH' : 'Aerodrome · direct', quote: { amountIn: rawAmount, amountOut: output.toString(), slippageTolerance: 0.5, quoteId: `aero_${Date.now()}` } }
+      } catch {}
+    }
+    throw new Error('Aerodrome could not find a liquid route for this pair.')
+  }
+
   async function getQuote() {
     setError(''); setStatus(''); setQuote(null)
     if (!wallet || !authenticated) return setError('Connect your Privy wallet first.')
@@ -109,9 +135,14 @@ export default function BaseDeFi() {
     setLoading(true)
     try {
       const rawAmount = BigInt(Math.round(Number(amount) * 10 ** sellDecimals)).toString()
-      const response = await fetch('/api/quote', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ sellToken, buyToken, amount: rawAmount, orderType: 'market', swapper: wallet, provider }) })
-      const data = await response.json()
-      if (!response.ok) throw new Error(data.error || 'Quote failed')
+      const data = provider === 'aerodrome'
+        ? await getAerodromeQuote(rawAmount)
+        : await (async () => {
+            const response = await fetch('/api/quote', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ sellToken, buyToken, amount: rawAmount, orderType: 'market', swapper: wallet, provider }) })
+            const json = await response.json()
+            if (!response.ok) throw new Error(json.error || 'Quote failed')
+            return json
+          })()
       setQuote(data); setQuoteAt(Date.now()); setReviewing(false); setStatus('Quote ready. Review it before approving or swapping.')
     } catch (e) { setError(e instanceof Error ? e.message : 'Quote failed.') } finally { setLoading(false) }
   }
@@ -131,7 +162,7 @@ export default function BaseDeFi() {
 
   async function executeSwap() {
     setError(''); setStatus('')
-    if (provider !== 'uniswap') return setError('Executable wallet flow is currently enabled for Uniswap. Bankr remains quote-only.')
+    if (provider !== 'uniswap') return setError('Executable wallet flow is currently enabled for Uniswap. Aerodrome is quote-only for now; Bankr remains quote-only.')
     if (!quote) return setError('Get a fresh quote first.')
     if (quoteAt && Date.now() - quoteAt > 30000) return setError('Quote expired. Get a fresh quote before signing.')
     if (!reviewing) return setReviewing(true)
@@ -165,7 +196,7 @@ export default function BaseDeFi() {
         <div className="stockField"><label>SELL TOKEN · BASE</label><select value={sellToken} onChange={e => setSellToken(e.target.value)}>{BASE_TOKENS.map(token => <option key={token.address} value={token.address}>{token.symbol} · {token.name}</option>)}<option value="custom">Custom contract…</option></select>{!BASE_TOKENS.some(token => token.address.toLowerCase() === sellToken.toLowerCase()) && <input style={{ marginTop: 8 }} value={sellToken} onChange={e => setSellToken(e.target.value)} placeholder="0x… token contract" />}</div>
         <div className="stockField"><label>BUY TOKEN · BASE</label><select value={buyToken} onChange={e => setBuyToken(e.target.value)}>{BASE_TOKENS.map(token => <option key={token.address} value={token.address}>{token.symbol} · {token.name}</option>)}<option value="custom">Custom contract…</option></select>{!BASE_TOKENS.some(token => token.address.toLowerCase() === buyToken.toLowerCase()) && <input style={{ marginTop: 8 }} value={buyToken} onChange={e => setBuyToken(e.target.value)} placeholder="0x… token contract" />}</div>
       </div>
-      <div className="stockControls"><div className="stockField"><label>AMOUNT · {selectedToken(sellToken)?.symbol || "TOKEN"}</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /><small style={{ display: "block", marginTop: 6 }}>Balance: {sellBalance} {selectedToken(sellToken)?.symbol || ""} · {sellDecimals} decimals <button type="button" className="secondaryButton" style={{ marginLeft: 6, padding: "2px 7px" }} onClick={() => setAmount(sellBalance.replace(/,/g, ""))} disabled={sellBalance === "—"}>MAX</button></small></div><div className="stockField"><label>QUOTE ROUTER</label><select value={provider} onChange={e => setProvider(e.target.value as 'uniswap' | 'bankr')}><option value="uniswap">Uniswap</option><option value="bankr">Bankr · quote</option></select></div></div>
+      <div className="stockControls"><div className="stockField"><label>AMOUNT · {selectedToken(sellToken)?.symbol || "TOKEN"}</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /><small style={{ display: "block", marginTop: 6 }}>Balance: {sellBalance} {selectedToken(sellToken)?.symbol || ""} · {sellDecimals} decimals <button type="button" className="secondaryButton" style={{ marginLeft: 6, padding: "2px 7px" }} onClick={() => setAmount(sellBalance.replace(/,/g, ""))} disabled={sellBalance === "—"}>MAX</button></small></div><div className="stockField"><label>QUOTE ROUTER</label><select value={provider} onChange={e => setProvider(e.target.value as 'uniswap' | 'bankr')}><option value="uniswap">Uniswap</option><option value="aerodrome">Aerodrome · onchain route</option><option value="bankr">Bankr · quote</option></select></div></div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}><button className="secondaryButton" onClick={wallet ? disconnect : connect} disabled={!ready}>{wallet ? `${wallet.slice(0,6)}…${wallet.slice(-4)} · Disconnect` : 'Connect Base wallet'}</button><button className="approveButton" onClick={getQuote} disabled={loading || !authenticated}>{loading ? 'Quoting…' : 'Get swap quote'}</button></div>
       {quote && <div className="result" style={{ marginTop: 12 }}>
         <strong>Swap quote</strong>
