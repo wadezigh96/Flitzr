@@ -81,6 +81,7 @@ export default function BaseDeFi() {
   }, [buyToken, ethProvider])
 
   function formatRawAmount(value: string | undefined, decimals: number) {
+
     if (!value) return '—'
     try {
       const raw = BigInt(value)
