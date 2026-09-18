@@ -53,9 +53,24 @@ Flitzr is a **Defencial-first** agent runtime on **Base (8453)**:
 - Preview-first execution model with deterministic Defencial gates
 - Explicit user signing between intent and state-changing execution
 - Privy wallet authentication for the user experience
-- Real Dynamic **server wallet** integration (`lib/dynamic.ts`, `GET /api/dynamic/status`)
+- Live Dynamic **server wallet** on Base (`ready: true`)
 - Multi-provider execution path across Bankr, Definitive, and Uniswap
 - Production-shaped stack: Next.js 16, TypeScript, CI typecheck + build, Vercel deploy
+
+## Live Dynamic evidence (reviewers)
+
+Public endpoint: https://flitzr.vercel.app/api/dynamic/status
+
+Verified live response:
+
+- `configured`: true
+- `ready`: true
+- `pattern`: server-wallet
+- `address`: `0x2E95fc06F5195664104a86a43a94203E8795044a`
+- `walletId`: `8cf4f72f-d037-4d38-8780-05819fe8d200`
+- `chainId`: 8453 (Base)
+
+Basescan: https://basescan.org/address/0x2E95fc06F5195664104a86a43a94203E8795044a
 
 ## How to run
 ```bash
@@ -71,6 +86,7 @@ npm run dev
 - **GitHub:** https://github.com/wadezigh96/flitzr
 - **Live app:** https://flitzr.vercel.app
 - **Dynamic status (reviewers):** https://flitzr.vercel.app/api/dynamic/status
+- **Agent server wallet (Base):** https://basescan.org/address/0x2E95fc06F5195664104a86a43a94203E8795044a
 - **Dynamic track guide:** https://runtime.nyc/tracks/dynamic
 - **Demo video:** (add your Loom / YouTube / X recording — required for online)
 
@@ -84,7 +100,7 @@ npm run dev
 - **Pattern:** Server wallets (API token; wallets belong to developer account)
 - **Job:** Agent evaluates Defencial-gated financial intents, then uses Dynamic to sign / prepare payment actions on Base
 - **User wallet:** Privy-authenticated wallet for user-owned funds and explicit transaction signing
-- **Evidence:** `lib/dynamic.ts` · `GET /api/dynamic/status` · README Dynamic section · recorded demo of intent → Defencial → Dynamic readiness/action
+- **Evidence:** `lib/dynamic.ts` · live `GET /api/dynamic/status` (`ready: true`, address `0x2E95fc06F5195664104a86a43a94203E8795044a`) · recorded demo of intent → Defencial → Dynamic readiness/action
 - **Separation:** Dynamic server wallet for agent-side actions; user wallet remains under explicit user authorization
 
 ## Team
