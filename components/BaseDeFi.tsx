@@ -38,6 +38,8 @@ export default function BaseDeFi() {
   const [executing, setExecuting] = useState(false)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
+  const [quoteAt, setQuoteAt] = useState<number | null>(null)
+  const [reviewing, setReviewing] = useState(false)
 
   const wallet = authenticated ? (wallets[0]?.address?.toLowerCase() || '') : ''
   const ethProvider = wallets[0]?.getEthereumProvider?.()
@@ -103,7 +105,7 @@ export default function BaseDeFi() {
       const response = await fetch('/api/quote', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ sellToken, buyToken, amount: rawAmount, orderType: 'market', swapper: wallet, provider }) })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Quote failed')
-      setQuote(data); setStatus('Quote ready. Review it before approving or swapping.')
+      setQuote(data); setQuoteAt(Date.now()); setStatus('Quote ready. Review it before approving or swapping.')
     } catch (e) { setError(e instanceof Error ? e.message : 'Quote failed.') } finally { setLoading(false) }
   }
 
@@ -124,6 +126,8 @@ export default function BaseDeFi() {
     setError(''); setStatus('')
     if (provider !== 'uniswap') return setError('Executable wallet flow is currently enabled for Uniswap. Bankr remains quote-only.')
     if (!quote) return setError('Get a fresh quote first.')
+    if (quoteAt && Date.now() - quoteAt > 30000) return setError('Quote expired. Get a fresh quote before signing.')
+    if (!reviewing) return setReviewing(true)
     setExecuting(true)
     try {
       const rawAmount = BigInt(Math.round(Number(amount) * 10 ** sellDecimals)).toString()
@@ -139,6 +143,7 @@ export default function BaseDeFi() {
       if (tx.maxPriorityFeePerGas) params.maxPriorityFeePerGas = `0x${BigInt(tx.maxPriorityFeePerGas).toString(16)}`
       if (tx.gasPrice && !tx.maxFeePerGas) params.gasPrice = `0x${BigInt(tx.gasPrice).toString(16)}`
       const hash = await ethProvider.request({ method: 'eth_sendTransaction', params: [params] }) as string
+      setReviewing(false)
       setStatus(`Swap submitted on Base: ${hash}`)
     } catch (e) { setError(e instanceof Error ? e.message : 'Swap failed.') } finally { setExecuting(false) }
   }
@@ -167,8 +172,8 @@ export default function BaseDeFi() {
           <div className="result"><small>Network Fee</small><strong>{quote.quote?.gasUseEstimateQuote ? `${quote.quote.gasUseEstimateQuote} ETH` : 'Provider data unavailable'}</strong></div>
           <div className="result"><small>Quote ID</small><strong style={{ overflowWrap: 'anywhere' }}>{quote.quote?.quoteId || 'Provider response'}</strong></div>
         </div>
-        <small style={{ display: 'block', marginTop: 10 }}>Base Mainnet · Review the quoted output and route before signing.</small>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{provider === 'uniswap' && <><button className="secondaryButton" onClick={approveToken} disabled={executing}>Approve input token</button><button className="approveButton" onClick={executeSwap} disabled={executing}>{executing ? 'Waiting…' : 'Review & execute swap'}</button></>}</div></div>}
+        <small style={{ display: 'block', marginTop: 10 }}>Base Mainnet · Quote valid for 30 seconds. Review the output and route before signing.{quoteAt ? ` · ${Math.max(0, Math.ceil((30000 - (Date.now() - quoteAt)) / 1000))}s` : ''}</small>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{provider === 'uniswap' && <><button className="secondaryButton" onClick={approveToken} disabled={executing}>Approve input token</button><button className="approveButton" onClick={executeSwap} disabled={executing}>{executing ? 'Waiting…' : reviewing ? 'Confirm swap in wallet' : 'Review & execute swap'}</button></>}</div></div>}
     </div>}
 
     {tab === 'stake' && <div style={{ marginTop: 16 }} className="result"><strong>Aerodrome staking & liquidity</strong><p className="muted">Aerodrome supports Base swaps, liquidity deposits and staking/emissions. AERO can also be locked into veAERO for voting and fee participation.</p><div className="chips"><span>Base</span><span>AERO / veAERO</span><span>LP staking</span><span>Explicit wallet approval</span></div><div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}><a className="secondaryButton" href={AERODROME} target="_blank" rel="noreferrer">Open Aerodrome ↗</a><a className="secondaryButton" href={AERO_LAUNCH} target="_blank" rel="noreferrer">Launch liquidity ↗</a></div></div>}
