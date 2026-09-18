@@ -73,13 +73,28 @@ export default function Home() {
           intent: { type: 'market', amountUsd: null },
           defencial: data.defencial,
         },
-        quote: { message: data.status === 'processing' ? 'Bankr is processing the agent job.' : 'Bankr accepted the agent command.' },
+        quote: { message: data.jobId ? `Bankr job ${data.jobId} is processing.` : 'Bankr accepted the agent command.' },
         error: undefined,
       })
+      if (data.jobId) {
+        const maxAttempts = 10
+        for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000))
+          const jobResponse = await fetch(`/api/agent/bankr/${encodeURIComponent(data.jobId)}`, { headers: await authHeaders() })
+          const jobData = await readJsonResponse(jobResponse, 'Bankr job status was invalid.')
+          if (!jobResponse.ok) throw new Error(jobData.error || 'Bankr job polling failed.')
+          const status = String(jobData.status || jobData.state || '').toLowerCase()
+          if (['completed', 'success', 'succeeded', 'failed', 'error', 'cancelled'].includes(status)) {
+            setResult(prev => ({ ...prev, quote: { message: status === 'completed' || status === 'success' || status === 'succeeded' ? 'Bankr completed the agent job.' : `Bankr job ended with status: ${status}.` }, error: status === 'failed' || status === 'error' || status === 'cancelled' ? `Bankr job ended with status: ${status}.` : undefined }))
+            break
+          }
+        }
+      }
     } catch (error) {
       setResult({ error: error instanceof Error ? error.message : 'Bankr agent request failed.' })
     } finally { setLoading(false) }
   }
+
 
   async function logoutWallet() {
     try {
