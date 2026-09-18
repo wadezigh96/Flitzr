@@ -1,14 +1,8 @@
 import { NextResponse } from 'next/server'
 import { normalizeWallet } from '@/lib/execution'
-import { readSession } from '@/lib/auth'
+import { requirePrivyWallet } from '@/lib/privy'
 
 const BASE_URL = 'https://trade-api.gateway.uniswap.org/v1'
-
-function sessionFromRequest(request: Request) {
-  const cookie = request.headers.get('cookie') || ''
-  const token = cookie.split(';').map(v => v.trim()).find(v => v.startsWith('flitzr_session='))?.slice('flitzr_session='.length)
-  return readSession(token)
-}
 
 function apiKey() {
   const key = process.env.UNISWAP_API_KEY
@@ -25,8 +19,7 @@ export async function POST(request: Request) {
     const swapper = normalizeWallet(body.swapper)
     if (!/^0x[a-fA-F0-9]{40}$/.test(sellToken) || !/^0x[a-fA-F0-9]{40}$/.test(buyToken)) return NextResponse.json({ error: 'Valid token addresses are required.' }, { status: 400 })
     if (!/^\d+$/.test(amount) || amount === '0' || !swapper) return NextResponse.json({ error: 'Valid wallet and positive amount are required.' }, { status: 400 })
-    const session = sessionFromRequest(request)
-    if (!session || session.address.toLowerCase() !== swapper) return NextResponse.json({ error: 'Authenticate the connected wallet first.' }, { status: 401 })
+    if (!await requirePrivyWallet(request, swapper)) return NextResponse.json({ error: 'Authenticate the connected wallet with Privy first.' }, { status: 401 })
 
     const headers = { 'x-api-key': apiKey(), 'content-type': 'application/json', accept: 'application/json', 'x-universal-router-version': '2.0', 'x-permit2-disabled': 'true' }
     const quoteResponse = await fetch(`${BASE_URL}/quote`, {
