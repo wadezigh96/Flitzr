@@ -9,7 +9,7 @@ export default function PrivyProvider({ children }: { children: React.ReactNode 
     <Provider
       appId={appId}
       config={{
-        appearance: { walletChainType: 'ethereum' },
+        appearance: { walletChainType: 'ethereum-only' },
       }}
     >
       {children}
