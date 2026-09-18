@@ -13,6 +13,7 @@ Flitzr turns natural-language financial goals into Defencial-controlled executio
 - App: https://flitzr.vercel.app
 - GitHub: https://github.com/wadezigh96/flitzr
 - Dynamic status: https://flitzr.vercel.app/api/dynamic/status
+- Demo video: https://www.youtube.com/watch?v=RO3tcmiAk44
 - Demo script: https://github.com/wadezigh96/flitzr/blob/main/docs/DEMO_SCRIPT.md
 
 ## Tracks
@@ -25,7 +26,3 @@ Flitzr turns natural-language financial goals into Defencial-controlled executio
 Pattern: server wallets (API token, developer-owned).
 Job: after Defencial gates an intent, the agent can use a Dynamic server wallet on Base for signing / payment readiness. User funds stay on the Privy-authenticated user wallet.
 Evidence: lib/dynamic.ts and GET /api/dynamic/status.
-
-## After deploy of commit 8c9455a+
-Status should stay on one pinned address and must not mint a new wallet per request.
-If the live JSON details still say "created" or the address changes, Redeploy main on Vercel.

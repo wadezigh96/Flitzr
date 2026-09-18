@@ -16,16 +16,16 @@ Bankr, HeyAnon, and Griffain optimize conversational execution. MetaMask Agent a
 
 https://flitzr.vercel.app/api/dynamic/status
 
-Pattern: server-wallet on Base (8453). After the pin deploy, status must not mint a new wallet per request.
+Pattern: server-wallet on Base (8453). Status is pinned and does not mint a new wallet per request.
 
 ## Links
 - GitHub: https://github.com/wadezigh96/flitzr
 - Live: https://flitzr.vercel.app
 - Dynamic status: https://flitzr.vercel.app/api/dynamic/status
+- Demo video: https://www.youtube.com/watch?v=RO3tcmiAk44
 - Demo script: docs/DEMO_SCRIPT.md
 - Competitors: docs/COMPETITORS.md
 - Form paste: docs/FORM_COPY.md
-- Demo video: (add Loom / YouTube / X — required for online)
 
 ## Tracks
 1. Bankr grand prize
@@ -37,4 +37,4 @@ Pattern: server-wallet on Base (8453). After the pin deploy, status must not min
 Solo
 
 ## Deadline
-Saturday, September 19, 2026, 4 PM EDT. Online entries need a recorded demo.
+Saturday, September 19, 2026, 4 PM EDT.
