@@ -4,7 +4,7 @@
 
 **1. The problem — 10s**
 
-“Most AI trading agents can understand what I say, but the dangerous part is what happens after the decision. Flitzr puts a deterministic policy layer between intent and money.”
+Most AI trading agents can parse a sentence. The dangerous part is what happens after the decision. Flitzr puts **Defencial** — a deterministic control layer — between intent and money.
 
 **2. Natural language — 15s**
 
@@ -14,39 +14,42 @@ Enter:
 
 Show the parsed DCA intent and the $20 amount.
 
-**3. Policy — 15s**
+**3. Defencial — 15s**
 
 Show:
 
 - Base
-- $25 single-action approval threshold
+- $25 single-trade limit
 - $100 daily budget
-- approval boundary
+- approval required above $25
 
-Explain that the LLM proposes; the policy engine decides whether execution may proceed.
+The model proposes. Defencial decides whether execution may proceed.
 
-**4. Sponsor execution plan — 20s**
+**4. Providers — 15s**
 
-Show Definitive as the advanced-order execution adapter and Bankr as the agent/wallet layer. The planner stays preview-only until approval.
+- Bankr — agent / wallet layer
+- Definitive Flash — DCA / limit planning
+- Uniswap — Base spot quotes
+- Dynamic — agent server wallet on Base
 
-**5. Guardrail demo — 15s**
+Planner stays preview-only until approval.
 
-Enter:
+**5. Dynamic evidence — 15s**
 
-`Buy $150 of ETH on Base`
+Open https://flitzr.vercel.app/api/dynamic/status
 
-Show that the $100 daily budget blocks the action.
+Show `ready: true` and the pinned address `0xC9d6d9a9D059c6E3F41744FeD834bE818DB389e8`.
 
-Then enter:
+**6. Guardrail — 10s**
 
-`Buy $50 of ETH on Base`
+`Buy $150 of ETH on Base` — blocked by the $100 daily Defencial.
 
-Show that it is within the daily budget but requires approval above $25.
+`Buy $50 of ETH on Base` — allowed inside daily budget, approval required above $25.
 
-**6. Close — 15s**
+**7. Close — 10s**
 
-“Flitzr is not an LLM with a wallet. It is a policy-controlled execution system: intent, policy, quote, approval, execution, confirmation.”
+Flitzr is not an LLM with a wallet. It is Defencial-gated execution: intent, Defencial, quote, approval, sign, settle.
 
-## Important demo rule
+## Rules
 
-Do not expose API keys or private keys on screen. Use preview/read-only mode unless a real transaction is explicitly approved and funded for the demo.
+Do not show API keys. Do not claim x402 is paid unless the response is HTTP 402 then a verified retry. Do not call `/api/dynamic/status` as a wallet factory — the address is pinned.

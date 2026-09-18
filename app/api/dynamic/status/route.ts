@@ -1,11 +1,6 @@
 import { NextResponse } from 'next/server'
-import { agentPaymentReady, getDynamicStatus } from '@/lib/dynamic'
+import { agentPaymentReady, getDynamicStatus, PINNED_AGENT_WALLET } from '@/lib/dynamic'
 
-/**
- * GET /api/dynamic/status
- * Public health / demo endpoint for the Runtime Dynamic track.
- * Never exposes API tokens.
- */
 export async function GET() {
   const status = getDynamicStatus()
   if (!status.configured) {
@@ -17,11 +12,6 @@ export async function GET() {
       message: status.reason,
       chainId: 8453,
       network: 'Base',
-      docs: {
-        agents: 'https://www.dynamic.xyz/docs/overview/agents/overview',
-        payments: 'https://www.dynamic.xyz/docs/overview/agents/agent-payments',
-        track: 'https://runtime.nyc/tracks/dynamic',
-      },
     })
   }
 
@@ -31,11 +21,12 @@ export async function GET() {
     pattern: 'server-wallet',
     configured: true,
     ready: ready.ready,
-    address: ready.address ?? status.address ?? null,
+    address: ready.address ?? PINNED_AGENT_WALLET,
     walletId: ready.walletId ?? null,
     details: ready.details,
     chainId: 8453,
     network: 'Base',
+    explorer: `https://basescan.org/address/${ready.address ?? PINNED_AGENT_WALLET}`,
     docs: {
       agents: 'https://www.dynamic.xyz/docs/overview/agents/overview',
       payments: 'https://www.dynamic.xyz/docs/overview/agents/agent-payments',
