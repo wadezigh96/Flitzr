@@ -9,7 +9,6 @@ const BASE_TOKENS = [
   { symbol: 'WETH', name: 'Wrapped Ether', address: '0x4200000000000000000000000000000000000006' },
   { symbol: 'USDC', name: 'USD Coin', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' },
   { symbol: 'DAI', name: 'Dai Stablecoin', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb' },
-  { symbol: 'AERO', name: 'Aerodrome', address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631' },
   { symbol: 'cbBTC', name: 'Coinbase Wrapped BTC', address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf' },
   { symbol: 'wstETH', name: 'Wrapped stETH', address: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452' },
 ] as const
@@ -84,7 +83,7 @@ export default function BaseDeFi() {
 
   useEffect(() => {
     if (!/^0x[a-fA-F0-9]{40}$/.test(buyToken) || !ethProvider) return
-    void ethProvider.request({ method: 'eth_call', params: [{ to: buyToken, data: '0x313ce567' }, 'latest'] }).then(value => setBuyDecimals(Number(BigInt(String(value || '0x6'))))).catch(() => setBuyDecimals(18))
+    void ethProvider.request({ method: 'eth_call', params: [{ to: buyToken, data: '0x313ce567' }, 'latest'] }).then((value: unknown) => setBuyDecimals(Number(BigInt(String(value || '0x6'))))).catch(() => setBuyDecimals(18))
   }, [buyToken, ethProvider])
 
   function formatRawAmount(value: string | undefined, decimals: number) {
