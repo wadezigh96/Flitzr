@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { selectProvider, type ProviderName } from '@/lib/providers'
+import { uniswapQuote, summarizeUniswapQuote } from '@/lib/uniswap'
 import { normalizeWallet } from '@/lib/execution'
 import { requirePrivyWallet } from '@/lib/privy'
 
@@ -9,8 +9,7 @@ export async function POST(request: Request) {
     const sellToken = typeof body.sellToken === 'string' ? body.sellToken : ''
     const buyToken = typeof body.buyToken === 'string' ? body.buyToken : ''
     const amount = typeof body.amount === 'string' ? body.amount : ''
-    const orderType = body.orderType === 'market' || body.orderType === 'dca' || body.orderType === 'limit' ? body.orderType : 'market'
-    const preferredProvider = body.provider === 'bankr' || body.provider === 'uniswap' || body.provider === 'definitive' ? body.provider as ProviderName : undefined
+    const orderType = body.orderType === 'market' ? 'market' : 'market'
     const swapper = normalizeWallet(body.swapper)
 
     if (!/^0x[a-fA-F0-9]{40}$/.test(sellToken) || !/^0x[a-fA-F0-9]{40}$/.test(buyToken)) return NextResponse.json({ error: 'Valid token addresses are required.' }, { status: 400 })
@@ -18,10 +17,9 @@ export async function POST(request: Request) {
     if (!swapper) return NextResponse.json({ error: 'A valid Base wallet is required.' }, { status: 400 })
     if (!await requirePrivyWallet(request, swapper)) return NextResponse.json({ error: 'Authenticate the connected wallet with Privy before requesting a quote.' }, { status: 401 })
 
-    const provider = selectProvider(orderType, preferredProvider)
-    if (!provider) return NextResponse.json({ error: `No provider supports ${orderType} orders yet.` }, { status: 422 })
-    const quote = await provider.quote({ chainId: 8453, sellToken, buyToken, amount, orderType, swapper, slippageTolerance: typeof body.slippageTolerance === 'number' ? body.slippageTolerance : 0.5 })
-    return NextResponse.json({ provider: provider.name, quote, previewOnly: true, chainId: 8453 })
+    const raw = await uniswapQuote({ tokenIn: sellToken, tokenOut: buyToken, amount, swapper, slippageTolerance: typeof body.slippageTolerance === 'number' ? body.slippageTolerance : 0.5 })
+    const summary = summarizeUniswapQuote(raw)
+    return NextResponse.json({ provider: 'uniswap', routing: summary.routing, quote: summary.quote, quoteId: summary.requestId, permitData: summary.permitData, approvalApplicable: summary.approvalApplicable, previewOnly: true, chainId: 8453 })
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Quote failed' }, { status: 502 })
   }
