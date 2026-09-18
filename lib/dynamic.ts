@@ -54,7 +54,7 @@ async function getEvmClient() {
 
   const client = new DynamicEvmWalletClient({
     environmentId: environmentId!,
-    enableMPCAccelerator: true,
+    enableMPCAccelerator: false,
   })
   await client.authenticateApiToken(authToken!)
   return client
@@ -83,20 +83,17 @@ export async function ensureAgentServerWallet(): Promise<
     const { backupPassword } = env()
     const createOptions: Record<string, unknown> = {
       thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
-      backUpToDynamic: Boolean(backupPassword),
+      backUpToClientShareService: Boolean(backupPassword),
       onError: (err: Error) => {
         console.error('[dynamic] createWalletAccount error', err)
       },
     }
-    if (backupPassword) {
-      createOptions.password = backupPassword
-    }
-    const result = await (client as any).createWalletAccount(createOptions)
+    if (backupPassword) createOptions.password = backupPassword
 
+    const result = await (client as any).createWalletAccount(createOptions)
     const created = result as any
-    const metadata = created?.walletMetadata || {}
-    const address = (created?.accountAddress || created?.address || metadata?.address || metadata?.walletAddress) as `0x${string}`
-    const walletId = String(created?.walletId || created?.id || metadata?.walletId || metadata?.id || address || '')
+    const address = created?.accountAddress as `0x${string}`
+    const walletId = String(created?.walletId || address || '')
     if (!address?.startsWith('0x')) {
       return {
         ok: false,
