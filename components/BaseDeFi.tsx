@@ -27,13 +27,32 @@ export default function BaseDeFi() {
   const [authenticated, setAuthenticated] = useState(false)
   const [sellToken, setSellToken] = useState('0x4200000000000000000000000000000000000006')
   const [buyToken, setBuyToken] = useState('0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913')
-  const [amount, setAmount] = useState('1000000000000000')
+  const [amount, setAmount] = useState('0.001')
+  const [sellBalance, setSellBalance] = useState('—')
+  const [sellDecimals, setSellDecimals] = useState(18)
   const [provider, setProvider] = useState<'uniswap' | 'bankr'>('uniswap')
   const [quote, setQuote] = useState<QuoteData | null>(null)
   const [loading, setLoading] = useState(false)
   const [executing, setExecuting] = useState(false)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
+
+  function selectedToken(address: string) {
+    return BASE_TOKENS.find(token => token.address.toLowerCase() === address.toLowerCase())
+  }
+
+  async function refreshSellBalance(address = sellToken, account = wallet) {
+    if (!account || !/^0x[a-fA-F0-9]{40}$/.test(address)) return
+    try {
+      const eth = ethereum()
+      const decimalsHex = await eth.request({ method: 'eth_call', params: [{ to: address, data: '0x313ce567' }, 'latest'] }) as string
+      const decimals = Number(BigInt(decimalsHex || '0x12'))
+      const balanceHex = await eth.request({ method: 'eth_call', params: [{ to: address, data: `0x70a08231${account.slice(2).padStart(64, '0')}` }, 'latest'] }) as string
+      const balance = Number(BigInt(balanceHex || '0x0')) / 10 ** decimals
+      setSellDecimals(decimals)
+      setSellBalance(Number.isFinite(balance) ? balance.toLocaleString(undefined, { maximumFractionDigits: 6 }) : '—')
+    } catch { setSellBalance('—') }
+  }
 
   function ethereum() {
     const value = (window as unknown as { ethereum?: { request: (args: { method: string; params?: unknown[] }) => Promise<unknown> } }).ethereum
@@ -51,6 +70,7 @@ export default function BaseDeFi() {
       const accounts = await eth.request({ method: 'eth_accounts' }) as string[]
       if (!accounts?.[0]) throw new Error('No wallet account returned.')
       setWallet(accounts[0].toLowerCase())
+      await refreshSellBalance(sellToken, accounts[0].toLowerCase())
       setStatus('Wallet connected. Sign the authentication message to enable quotes.')
       const nonceResponse = await fetch('/api/auth/nonce', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ walletAddress: accounts[0] }) })
       const nonceData = await nonceResponse.json()
@@ -72,10 +92,11 @@ export default function BaseDeFi() {
     setError(''); setStatus(''); setQuote(null)
     if (!wallet || !authenticated) return setError('Connect and authenticate your Base wallet first.')
     if (!/^0x[a-fA-F0-9]{40}$/.test(sellToken) || !/^0x[a-fA-F0-9]{40}$/.test(buyToken)) return setError('Enter valid Base token contract addresses.')
-    if (!/^\d+$/.test(amount) || amount === '0') return setError('Amount must be a positive base-unit integer.')
+    if (!/^\d*\.?\d+$/.test(amount) || Number(amount) <= 0) return setError('Amount must be greater than 0.')
     setLoading(true)
     try {
-      const response = await fetch('/api/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sellToken, buyToken, amount, orderType: 'market', swapper: wallet, provider }) })
+      const rawAmount = BigInt(Math.round(Number(amount) * 10 ** sellDecimals)).toString()
+      const response = await fetch('/api/quote', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sellToken, buyToken, amount: rawAmount, orderType: 'market', swapper: wallet, provider }) })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Quote failed')
       setQuote(data)
@@ -105,7 +126,8 @@ export default function BaseDeFi() {
     if (!quote) return setError('Get a fresh quote first.')
     setExecuting(true)
     try {
-      const response = await fetch('/api/swap', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sellToken, buyToken, amount, swapper: wallet }) })
+      const rawAmount = BigInt(Math.round(Number(amount) * 10 ** sellDecimals)).toString()
+      const response = await fetch('/api/swap', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sellToken, buyToken, amount: rawAmount, swapper: wallet }) })
       const data = await response.json() as SwapData & { error?: string }
       if (!response.ok || !data.transaction) throw new Error(data.error || 'Could not build swap transaction.')
       const eth = ethereum()
@@ -131,7 +153,7 @@ export default function BaseDeFi() {
         <div className="stockField"><label>SELL TOKEN · BASE</label><select value={sellToken} onChange={e => setSellToken(e.target.value)}>{BASE_TOKENS.map(token => <option key={token.address} value={token.address}>{token.symbol} · {token.name}</option>)}<option value="custom">Custom contract…</option></select>{!BASE_TOKENS.some(token => token.address.toLowerCase() === sellToken.toLowerCase()) && <input style={{ marginTop: 8 }} value={sellToken} onChange={e => setSellToken(e.target.value)} placeholder="0x… token contract" />}</div>
         <div className="stockField"><label>BUY TOKEN · BASE</label><select value={buyToken} onChange={e => setBuyToken(e.target.value)}>{BASE_TOKENS.map(token => <option key={token.address} value={token.address}>{token.symbol} · {token.name}</option>)}<option value="custom">Custom contract…</option></select>{!BASE_TOKENS.some(token => token.address.toLowerCase() === buyToken.toLowerCase()) && <input style={{ marginTop: 8 }} value={buyToken} onChange={e => setBuyToken(e.target.value)} placeholder="0x… token contract" />}</div>
       </div>
-      <div className="stockControls"><div className="stockField"><label>AMOUNT · BASE UNITS</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="numeric" /></div><div className="stockField"><label>QUOTE ROUTER</label><select value={provider} onChange={e => setProvider(e.target.value as 'uniswap' | 'bankr')}><option value="uniswap">Uniswap</option><option value="bankr">Bankr · quote</option></select></div></div>
+      <div className="stockControls"><div className="stockField"><label>AMOUNT · {selectedToken(sellToken)?.symbol || "TOKEN"}</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="decimal" placeholder="0.00" /><small style={{ display: "block", marginTop: 6 }}>Balance: {sellBalance} {selectedToken(sellToken)?.symbol || ""} · {sellDecimals} decimals <button type="button" className="secondaryButton" style={{ marginLeft: 6, padding: "2px 7px" }} onClick={() => setAmount(sellBalance.replace(/,/g, ""))} disabled={sellBalance === "—"}>MAX</button></small></div><div className="stockField"><label>QUOTE ROUTER</label><select value={provider} onChange={e => setProvider(e.target.value as 'uniswap' | 'bankr')}><option value="uniswap">Uniswap</option><option value="bankr">Bankr · quote</option></select></div></div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}><button className="secondaryButton" onClick={wallet ? disconnect : connect}>{wallet ? `${wallet.slice(0,6)}…${wallet.slice(-4)} · Disconnect` : 'Connect Base wallet'}</button><button className="approveButton" onClick={getQuote} disabled={loading || !authenticated}>{loading ? 'Quoting…' : 'Get swap quote'}</button></div>
       {quote && <div className="result" style={{ marginTop: 12 }}><strong>{String(quote.provider || provider).toUpperCase()} quote ready</strong><small>Base Mainnet · {quote.routing || 'preview'} · quote ID: {quote.quote?.quoteId || 'provider response'}</small><div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{provider === 'uniswap' && <><button className="secondaryButton" onClick={approveToken} disabled={executing}>Approve input token</button><button className="approveButton" onClick={executeSwap} disabled={executing}>{executing ? 'Waiting…' : 'Review & execute swap'}</button></>}</div></div>}
     </div>}
