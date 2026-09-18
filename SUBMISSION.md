@@ -7,23 +7,24 @@ Flitzr
 Defencial-first autonomous onchain financial agent on Base — natural language goals to structured, gated execution with Privy wallet authentication, Dynamic server wallets, and multi-provider routing
 
 ## Short Description (card / list)
-Flitzr turns natural-language financial goals into Defencial-controlled execution plans on Base. Intent is parsed, checked against deterministic single-trade and daily limits, routed to Bankr / Definitive / Uniswap, and only advanced after explicit approval when required. Privy authenticates the user wallet. A pinned Dynamic Server Wallet on Base supports agent-side payment readiness. Preview-first: the AI never broadcasts transactions on its own.
+Flitzr turns natural-language financial goals into Defencial-controlled execution plans on Base. Intent is parsed, checked against deterministic single-trade and daily limits, routed to Bankr / Definitive / Uniswap, and only advanced after explicit approval when required. Privy authenticates the user wallet. A Dynamic Server Wallet supports agent-side payment readiness. Preview-first: the AI never broadcasts transactions on its own.
+
+## Why not just Bankr / MetaMask Agent / HeyAnon
+Bankr, HeyAnon, and Griffain optimize conversational execution. MetaMask Agent and Coinbase Agents optimize wallet policy inside a single vendor. Flitzr is the control plane in between: the model proposes, **Defencial** decides, providers execute, Privy signs user funds, Dynamic holds the agent wallet. User wallet ≠ agent wallet. Preview-first. Public evidence at `/api/dynamic/status`.
 
 ## Live Dynamic evidence
 
 https://flitzr.vercel.app/api/dynamic/status
 
-- Pattern: server-wallet
-- Pinned agent address: `0xC9d6d9a9D059c6E3F41744FeD834bE818DB389e8`
-- Chain: Base (8453)
-- Explorer: https://basescan.org/address/0xC9d6d9a9D059c6E3F41744FeD834bE818DB389e8
-- Status does not mint a new wallet on each request
+Pattern: server-wallet on Base (8453). After the pin deploy, status must not mint a new wallet per request.
 
 ## Links
 - GitHub: https://github.com/wadezigh96/flitzr
 - Live: https://flitzr.vercel.app
 - Dynamic status: https://flitzr.vercel.app/api/dynamic/status
 - Demo script: docs/DEMO_SCRIPT.md
+- Competitors: docs/COMPETITORS.md
+- Form paste: docs/FORM_COPY.md
 - Demo video: (add Loom / YouTube / X — required for online)
 
 ## Tracks
