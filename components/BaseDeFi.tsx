@@ -5,6 +5,16 @@ import { useState } from 'react'
 const AERODROME = 'https://aerodrome.finance/'
 const AERO_LAUNCH = 'https://aerodrome.finance/docs/launcher'
 const BASE_CHAIN_ID = '0x2105'
+
+const BASE_TOKENS = [
+  { symbol: 'WETH', name: 'Wrapped Ether', address: '0x4200000000000000000000000000000000000006' },
+  { symbol: 'USDC', name: 'USD Coin', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' },
+  { symbol: 'DAI', name: 'Dai Stablecoin', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb' },
+  { symbol: 'AERO', name: 'Aerodrome', address: '0x940181a94A35A4569E4529A3CDfB74e38FD98631' },
+  { symbol: 'cbBTC', name: 'Coinbase Wrapped BTC', address: '0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf' },
+  { symbol: 'wstETH', name: 'Wrapped stETH', address: '0xc1CBa3fCea344f92D9239c08C0568f6F2F0ee452' },
+] as const
+
 const UNISWAP_PROXY_APPROVAL = '0x0000000085E102724e78eCd2F45DC9cA239Affad'
 const MAX_UINT256 = '0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff'
 
@@ -117,7 +127,10 @@ export default function BaseDeFi() {
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginTop: 14 }}>{(['swap','stake','tokenize'] as const).map(item => <button key={item} onClick={() => setTab(item)} className={tab === item ? 'approveButton' : 'secondaryButton'}>{item === 'swap' ? '⇄ Swap' : item === 'stake' ? '◈ Stake' : '◎ Tokenize'}</button>)}</div>
 
     {tab === 'swap' && <div style={{ marginTop: 16 }}>
-      <div className="stockControls"><div className="stockField"><label>SELL TOKEN · BASE CONTRACT</label><input value={sellToken} onChange={e => setSellToken(e.target.value)} /></div><div className="stockField"><label>BUY TOKEN · BASE CONTRACT</label><input value={buyToken} onChange={e => setBuyToken(e.target.value)} /></div></div>
+      <div className="stockControls">
+        <div className="stockField"><label>SELL TOKEN · BASE</label><select value={sellToken} onChange={e => setSellToken(e.target.value)}>{BASE_TOKENS.map(token => <option key={token.address} value={token.address}>{token.symbol} · {token.name}</option>)}<option value="custom">Custom contract…</option></select>{!BASE_TOKENS.some(token => token.address.toLowerCase() === sellToken.toLowerCase()) && <input style={{ marginTop: 8 }} value={sellToken} onChange={e => setSellToken(e.target.value)} placeholder="0x… token contract" />}</div>
+        <div className="stockField"><label>BUY TOKEN · BASE</label><select value={buyToken} onChange={e => setBuyToken(e.target.value)}>{BASE_TOKENS.map(token => <option key={token.address} value={token.address}>{token.symbol} · {token.name}</option>)}<option value="custom">Custom contract…</option></select>{!BASE_TOKENS.some(token => token.address.toLowerCase() === buyToken.toLowerCase()) && <input style={{ marginTop: 8 }} value={buyToken} onChange={e => setBuyToken(e.target.value)} placeholder="0x… token contract" />}</div>
+      </div>
       <div className="stockControls"><div className="stockField"><label>AMOUNT · BASE UNITS</label><input value={amount} onChange={e => setAmount(e.target.value)} inputMode="numeric" /></div><div className="stockField"><label>QUOTE ROUTER</label><select value={provider} onChange={e => setProvider(e.target.value as 'uniswap' | 'bankr')}><option value="uniswap">Uniswap</option><option value="bankr">Bankr · quote</option></select></div></div>
       <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}><button className="secondaryButton" onClick={wallet ? disconnect : connect}>{wallet ? `${wallet.slice(0,6)}…${wallet.slice(-4)} · Disconnect` : 'Connect Base wallet'}</button><button className="approveButton" onClick={getQuote} disabled={loading || !authenticated}>{loading ? 'Quoting…' : 'Get swap quote'}</button></div>
       {quote && <div className="result" style={{ marginTop: 12 }}><strong>{String(quote.provider || provider).toUpperCase()} quote ready</strong><small>Base Mainnet · {quote.routing || 'preview'} · quote ID: {quote.quote?.quoteId || 'provider response'}</small><div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{provider === 'uniswap' && <><button className="secondaryButton" onClick={approveToken} disabled={executing}>Approve input token</button><button className="approveButton" onClick={executeSwap} disabled={executing}>{executing ? 'Waiting…' : 'Review & execute swap'}</button></>}</div></div>}
