@@ -31,6 +31,7 @@ export default function BaseDeFi() {
   const [amount, setAmount] = useState('0.001')
   const [sellBalance, setSellBalance] = useState('—')
   const [sellDecimals, setSellDecimals] = useState(18)
+  const [buyDecimals, setBuyDecimals] = useState(6)
   const [provider, setProvider] = useState<'uniswap' | 'bankr'>('uniswap')
   const [quote, setQuote] = useState<QuoteData | null>(null)
   const [loading, setLoading] = useState(false)
@@ -58,6 +59,20 @@ export default function BaseDeFi() {
   }
 
   useEffect(() => { void refreshSellBalance() }, [wallet, sellToken, ethProvider])
+
+  useEffect(() => {
+    if (!/^0x[a-fA-F0-9]{40}$/.test(buyToken) || !ethProvider) return
+    void ethProvider.request({ method: 'eth_call', params: [{ to: buyToken, data: '0x313ce567' }, 'latest'] }).then(value => setBuyDecimals(Number(BigInt(String(value || '0x6'))))).catch(() => setBuyDecimals(18))
+  }, [buyToken, ethProvider])
+
+  function formatRawAmount(value: string | undefined, decimals: number) {
+    if (!value) return '—'
+    try {
+      const raw = BigInt(value)
+      const base = 10 ** decimals
+      return (Number(raw) / base).toLocaleString(undefined, { maximumFractionDigits: Math.min(decimals, 8) })
+    } catch { return value }
+  }
 
   async function connect() {
     setError(''); setStatus('')
@@ -144,10 +159,12 @@ export default function BaseDeFi() {
         <strong>Swap quote</strong>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 8, marginTop: 10 }}>
           <div className="result"><small>You Pay</small><strong>{amount} {selectedToken(sellToken)?.symbol || 'TOKEN'}</strong></div>
-          <div className="result"><small>You Receive</small><strong>{quote.quote?.amountOut ? quote.quote.amountOut : 'Provider quote'} {selectedToken(buyToken)?.symbol || 'TOKEN'}</strong></div>
+          <div className="result"><small>You Receive</small><strong>{formatRawAmount(quote.quote?.amountOut, buyDecimals)} {selectedToken(buyToken)?.symbol || 'TOKEN'}</strong></div>
           <div className="result"><small>Route</small><strong>{quote.routing || 'Direct'}</strong></div>
           <div className="result"><small>Provider</small><strong>{String(quote.provider || provider).toUpperCase()}</strong></div>
           <div className="result"><small>Slippage</small><strong>{quote.quote?.slippageTolerance ?? 0.5}%</strong></div>
+          <div className="result"><small>Price Impact</small><strong>{quote.quote?.priceImpact != null ? `${quote.quote.priceImpact}%` : 'Provider data unavailable'}</strong></div>
+          <div className="result"><small>Network Fee</small><strong>{quote.quote?.gasUseEstimateQuote ? `${quote.quote.gasUseEstimateQuote} ETH` : 'Provider data unavailable'}</strong></div>
           <div className="result"><small>Quote ID</small><strong style={{ overflowWrap: 'anywhere' }}>{quote.quote?.quoteId || 'Provider response'}</strong></div>
         </div>
         <small style={{ display: 'block', marginTop: 10 }}>Base Mainnet · Review the quoted output and route before signing.</small>
