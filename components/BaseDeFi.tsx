@@ -40,6 +40,7 @@ export default function BaseDeFi() {
   const [status, setStatus] = useState('')
   const [quoteAt, setQuoteAt] = useState<number | null>(null)
   const [reviewing, setReviewing] = useState(false)
+  const [quoteTick, setQuoteTick] = useState(0)
 
   const wallet = authenticated ? (wallets[0]?.address?.toLowerCase() || '') : ''
   const ethProvider = wallets[0]?.getEthereumProvider?.()
@@ -61,6 +62,12 @@ export default function BaseDeFi() {
   }
 
   useEffect(() => { void refreshSellBalance() }, [wallet, sellToken, ethProvider])
+
+  useEffect(() => {
+    if (!quoteAt) return
+    const timer = window.setInterval(() => setQuoteTick(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [quoteAt])
 
   useEffect(() => {
     if (!/^0x[a-fA-F0-9]{40}$/.test(buyToken) || !ethProvider) return
@@ -105,7 +112,7 @@ export default function BaseDeFi() {
       const response = await fetch('/api/quote', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ sellToken, buyToken, amount: rawAmount, orderType: 'market', swapper: wallet, provider }) })
       const data = await response.json()
       if (!response.ok) throw new Error(data.error || 'Quote failed')
-      setQuote(data); setQuoteAt(Date.now()); setStatus('Quote ready. Review it before approving or swapping.')
+      setQuote(data); setQuoteAt(Date.now()); setReviewing(false); setStatus('Quote ready. Review it before approving or swapping.')
     } catch (e) { setError(e instanceof Error ? e.message : 'Quote failed.') } finally { setLoading(false) }
   }
 
@@ -172,8 +179,14 @@ export default function BaseDeFi() {
           <div className="result"><small>Network Fee</small><strong>{quote.quote?.gasUseEstimateQuote ? `${quote.quote.gasUseEstimateQuote} ETH` : 'Provider data unavailable'}</strong></div>
           <div className="result"><small>Quote ID</small><strong style={{ overflowWrap: 'anywhere' }}>{quote.quote?.quoteId || 'Provider response'}</strong></div>
         </div>
-        <small style={{ display: 'block', marginTop: 10 }}>Base Mainnet · Quote valid for 30 seconds. Review the output and route before signing.{quoteAt ? ` · ${Math.max(0, Math.ceil((30000 - (Date.now() - quoteAt)) / 1000))}s` : ''}</small>
-        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>{provider === 'uniswap' && <><button className="secondaryButton" onClick={approveToken} disabled={executing}>Approve input token</button><button className="approveButton" onClick={executeSwap} disabled={executing}>{executing ? 'Waiting…' : reviewing ? 'Confirm swap in wallet' : 'Review & execute swap'}</button></>}</div></div>}
+        <small style={{ display: 'block', marginTop: 10 }}>Base Mainnet · Quote valid for 30 seconds. Review the output and route before signing.{quoteAt ? ` · ${Math.max(0, Math.ceil((30000 - (Date.now() - quoteAt)) / 1000))}s remaining` : ''}</small>
+        <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+          {provider === 'uniswap' && <>
+            <button className="secondaryButton" onClick={approveToken} disabled={executing || (quoteAt !== null && Date.now() - quoteAt > 30000)}>Approve input token</button>
+            {!reviewing ? <button className="approveButton" onClick={() => setReviewing(true)} disabled={executing || (quoteAt !== null && Date.now() - quoteAt > 30000)}>Review swap</button> : <button className="approveButton" onClick={executeSwap} disabled={executing}>{executing ? 'Waiting…' : 'Confirm in wallet'}</button>}
+          </>}
+          <button className="secondaryButton" onClick={getQuote} disabled={loading || executing}>{loading ? 'Refreshing…' : 'Refresh quote'}</button>
+        </div></div>}
     </div>}
 
     {tab === 'stake' && <div style={{ marginTop: 16 }} className="result"><strong>Aerodrome staking & liquidity</strong><p className="muted">Aerodrome supports Base swaps, liquidity deposits and staking/emissions. AERO can also be locked into veAERO for voting and fee participation.</p><div className="chips"><span>Base</span><span>AERO / veAERO</span><span>LP staking</span><span>Explicit wallet approval</span></div><div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}><a className="secondaryButton" href={AERODROME} target="_blank" rel="noreferrer">Open Aerodrome ↗</a><a className="secondaryButton" href={AERO_LAUNCH} target="_blank" rel="noreferrer">Launch liquidity ↗</a></div></div>}
