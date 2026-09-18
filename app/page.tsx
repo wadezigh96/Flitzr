@@ -9,7 +9,7 @@ type Result = { plan?: { intent: { type: string; amountUsd: number | null }; def
 const states = ['planned', 'awaiting_approval', 'approved', 'quoted', 'signing', 'submitted', 'confirmed']
 
 export default function Home() {
-  const { ready, authenticated, connectOrCreateWallet, logout, getAccessToken } = usePrivy()
+  const { ready, authenticated, login, logout, getAccessToken } = usePrivy()
   const { wallets } = useWallets()
   const [prompt, setPrompt] = useState('')
   const [result, setResult] = useState<Result | null>(null)
@@ -19,7 +19,8 @@ export default function Home() {
   const [quoteLoading, setQuoteLoading] = useState(false)
   const [signingLoading, setSigningLoading] = useState(false)
 
-  const wallet = authenticated ? (wallets[0]?.address?.toLowerCase() || '') : ''
+  const walletObject = wallets.find(w => w.walletClientType === 'privy') || wallets[0]
+  const wallet = authenticated ? (walletObject?.address?.toLowerCase() || wallets[0]?.address?.toLowerCase() || '') : ''
   const shortWallet = authenticated && wallet ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}` : 'Connect Wallet'
 
   useEffect(() => {
@@ -35,9 +36,11 @@ export default function Home() {
   async function connectWallet() {
     setWalletError('')
     try {
-      await connectOrCreateWallet()
+      await login()
+      const next = wallets.find(w => w.walletClientType === 'privy') || wallets[0]
+      if (next?.switchChain) await next.switchChain(8453)
     } catch (error) {
-      setWalletError(error instanceof Error ? error.message : 'Privy wallet connection failed.')
+      setWalletError(error instanceof Error ? error.message : 'Privy wallet connection failed. Allow popups and add flitzr.vercel.app in the Privy dashboard allowed domains.')
     }
   }
 
@@ -95,7 +98,6 @@ export default function Home() {
     } finally { setLoading(false) }
   }
 
-
   async function logoutWallet() {
     try {
       await logout()
@@ -146,13 +148,13 @@ export default function Home() {
     if (!result?.execution?.id || !wallet || !authenticated || signingLoading) return
     setSigningLoading(true); setResult(prev => ({ ...prev, error: undefined }))
     try {
-      const walletObject = wallets[0]
-      if (!walletObject) throw new Error('Privy wallet is not available.')
-      await walletObject.switchChain(8453)
+      const signer = wallets.find(w => w.address?.toLowerCase() === wallet) || wallets.find(w => w.walletClientType === 'privy') || wallets[0]
+      if (!signer) throw new Error('Privy wallet is not available. Connect again and approve the Privy popup.')
+      await signer.switchChain(8453)
       const payloadResponse = await fetch('/api/execution/signing-payload', { method: 'POST', headers: await authHeaders(), body: JSON.stringify({ executionId: result.execution.id, walletAddress: wallet }) })
       const payloadData = await readJsonResponse(payloadResponse, 'Signing API returned an invalid response.')
       if (!payloadResponse.ok) throw new Error(payloadData.error || 'Could not prepare signing payload')
-      const provider = await walletObject.getEthereumProvider()
+      const provider = await signer.getEthereumProvider()
       const signature = await provider.request({ method: 'eth_signTypedData_v4', params: [wallet, JSON.stringify(payloadData.typedData)] }) as string
       const submitResponse = await fetch('/api/execution/submit', { method: 'POST', headers: await authHeaders({ 'Idempotency-Key': `submit_${result.execution.id}` }), body: JSON.stringify({ executionId: result.execution.id, walletAddress: wallet, userSignature: signature }) })
       const submitData = await readJsonResponse(submitResponse, 'Submission API returned an invalid response.')
