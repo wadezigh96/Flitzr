@@ -2,15 +2,15 @@
  * Dynamic Server Wallet adapter for Flitzr.
  *
  * Pattern: Server wallets (API token auth, wallets belong to developer account).
- * Used by the agent for policy-checked payment / signing actions on Base.
+ * Used by the agent for Defencial-checked payment / signing actions on Base.
  *
  * Track: Runtime "Dynamic – Best Agentic Wallet or Payment Experience"
  * Docs: https://www.dynamic.xyz/docs/overview/agents/overview
  *       https://www.dynamic.xyz/docs/overview/agents/agent-payments
  *
- * This adapter is optional. If DYNAMIC_AUTH_TOKEN / DYNAMIC_ENVIRONMENT_ID
- * are missing, all methods return a clear "not configured" result so the
- * rest of Flitzr continues to work with user-controlled SIWE wallets.
+ * Current Node SDK returns:
+ *   { walletMetadata: { accountAddress, walletId }, publicKeyHex, ... }
+ * Address is NOT always on the root object. This adapter reads both shapes.
  */
 
 export type DynamicWalletStatus =
@@ -30,11 +30,61 @@ function env() {
   const authToken = process.env.DYNAMIC_AUTH_TOKEN?.trim()
   const environmentId = process.env.DYNAMIC_ENVIRONMENT_ID?.trim()
   const backupPassword = process.env.DYNAMIC_WALLET_BACKUP_PASSWORD?.trim()
-  return { authToken, environmentId, backupPassword }
+  const pinnedAddress = process.env.DYNAMIC_WALLET_ADDRESS?.trim() as `0x${string}` | undefined
+  return { authToken, environmentId, backupPassword, pinnedAddress }
+}
+
+function isAddress(value: unknown): value is `0x${string}` {
+  return typeof value === 'string' && /^0x[a-fA-F0-9]{40}$/.test(value)
+}
+
+function pickAddress(...candidates: unknown[]): `0x${string}` | undefined {
+  for (const candidate of candidates) {
+    if (isAddress(candidate)) return candidate
+  }
+  return undefined
+}
+
+function walkForAddress(value: unknown, depth = 0): `0x${string}` | undefined {
+  if (depth > 5 || value == null) return undefined
+  if (isAddress(value)) return value
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = walkForAddress(item, depth + 1)
+      if (found) return found
+    }
+    return undefined
+  }
+  if (typeof value === 'object') {
+    const rec = value as Record<string, unknown>
+    const direct = pickAddress(
+      rec.accountAddress,
+      rec.address,
+      rec.walletAddress,
+      (rec.walletMetadata as Record<string, unknown> | undefined)?.accountAddress,
+      (rec.walletMetadata as Record<string, unknown> | undefined)?.address,
+      (rec.wallet as Record<string, unknown> | undefined)?.accountAddress,
+      (rec.wallet as Record<string, unknown> | undefined)?.address,
+    )
+    if (direct) return direct
+    for (const nested of Object.values(rec)) {
+      const found = walkForAddress(nested, depth + 1)
+      if (found) return found
+    }
+  }
+  return undefined
+}
+
+function pickWalletId(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object') return undefined
+  const rec = value as Record<string, unknown>
+  const meta = rec.walletMetadata as Record<string, unknown> | undefined
+  const raw = rec.walletId ?? rec.id ?? meta?.walletId ?? meta?.id
+  return raw != null ? String(raw) : undefined
 }
 
 export function getDynamicStatus(): DynamicWalletStatus {
-  const { authToken, environmentId } = env()
+  const { authToken, environmentId, pinnedAddress } = env()
   if (!authToken || !environmentId) {
     return {
       configured: false,
@@ -42,7 +92,11 @@ export function getDynamicStatus(): DynamicWalletStatus {
         'DYNAMIC_AUTH_TOKEN and DYNAMIC_ENVIRONMENT_ID are required. Create them in the Dynamic dashboard (app.dynamic.xyz).',
     }
   }
-  return { configured: true, environmentId }
+  return {
+    configured: true,
+    environmentId,
+    ...(isAddress(pinnedAddress) ? { address: pinnedAddress } : {}),
+  }
 }
 
 async function getEvmClient() {
@@ -68,36 +122,45 @@ export async function ensureAgentServerWallet(): Promise<
     const status = getDynamicStatus()
     if (!status.configured) return { ok: false, error: status.reason }
 
+    const { pinnedAddress, backupPassword } = env()
+    if (isAddress(pinnedAddress)) {
+      return { ok: true, address: pinnedAddress, walletId: pinnedAddress }
+    }
+
     const client = await getEvmClient()
 
-    // Keep this adapter tolerant of minor Dynamic SDK response-shape changes.
-    const existing = await (client as any).getWalletAccounts?.().catch(() => null)
-    if (Array.isArray(existing) && existing.length > 0) {
-      const first = existing[0] as any
-      const address = (first.accountAddress || first.address || first.walletMetadata?.address) as `0x${string}`
-      const walletId = String(first.walletId || first.id || first.walletMetadata?.id || address || '')
-      if (address?.startsWith('0x')) return { ok: true, address, walletId }
+    const listFns = ['getWalletAccounts', 'listWalletAccounts', 'listWallets', 'getWallets'] as const
+    for (const fn of listFns) {
+      const listed = await (client as any)[fn]?.().catch(() => null)
+      const address = walkForAddress(listed)
+      if (address) {
+        const walletId = pickWalletId(listed) || address
+        return { ok: true, address, walletId }
+      }
     }
 
     const { ThresholdSignatureScheme } = await import('@dynamic-labs-wallet/node')
-    const { backupPassword } = env()
     const createOptions: Record<string, unknown> = {
       thresholdSignatureScheme: ThresholdSignatureScheme.TWO_OF_TWO,
-      backUpToClientShareService: Boolean(backupPassword),
       onError: (err: Error) => {
         console.error('[dynamic] createWalletAccount error', err)
       },
     }
-    if (backupPassword) createOptions.password = backupPassword
+    if (backupPassword) {
+      createOptions.password = backupPassword
+      createOptions.backUpToDynamic = true
+      createOptions.backUpToClientShareService = true
+    }
 
     const result = await (client as any).createWalletAccount(createOptions)
-    const created = result as any
-    const address = created?.accountAddress as `0x${string}`
-    const walletId = String(created?.walletId || address || '')
-    if (!address?.startsWith('0x')) {
+    const address = walkForAddress(result)
+    const walletId = pickWalletId(result) || address || ''
+
+    if (!address) {
+      const keys = result && typeof result === 'object' ? Object.keys(result as object).join(', ') : typeof result
       return {
         ok: false,
-        error: 'Dynamic created the wallet but did not return a readable EVM address in the current SDK response.',
+        error: `Dynamic created a wallet but no EVM address was found in the SDK payload (keys: ${keys}). Set DYNAMIC_WALLET_ADDRESS after copying walletMetadata.accountAddress from Dynamic.`,
       }
     }
     return { ok: true, address, walletId }
@@ -136,6 +199,7 @@ export async function agentPaymentReady(): Promise<{
   pattern: 'server-wallet'
   details: string
   address?: `0x${string}`
+  walletId?: string
 }> {
   const status = getDynamicStatus()
   if (!status.configured) {
@@ -158,5 +222,6 @@ export async function agentPaymentReady(): Promise<{
     pattern: 'server-wallet',
     details: `Dynamic server wallet ready on Base. Address ${wallet.address}. Agent authenticates with API token; wallets belong to the developer account.`,
     address: wallet.address,
+    walletId: wallet.walletId,
   }
 }

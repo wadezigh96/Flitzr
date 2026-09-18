@@ -4,7 +4,6 @@ import { agentPaymentReady, getDynamicStatus } from '@/lib/dynamic'
 /**
  * GET /api/dynamic/status
  * Public health / demo endpoint for the Runtime Dynamic track.
- * Shows whether the agent server wallet is configured and ready.
  * Never exposes API tokens.
  */
 export async function GET() {
@@ -16,6 +15,8 @@ export async function GET() {
       configured: false,
       ready: false,
       message: status.reason,
+      chainId: 8453,
+      network: 'Base',
       docs: {
         agents: 'https://www.dynamic.xyz/docs/overview/agents/overview',
         payments: 'https://www.dynamic.xyz/docs/overview/agents/agent-payments',
@@ -30,7 +31,8 @@ export async function GET() {
     pattern: 'server-wallet',
     configured: true,
     ready: ready.ready,
-    address: ready.address ?? null,
+    address: ready.address ?? status.address ?? null,
+    walletId: ready.walletId ?? null,
     details: ready.details,
     chainId: 8453,
     network: 'Base',
