@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { usePrivy, useWallets } from '@privy-io/react-auth'
 import TokenizedStocks from '@/components/TokenizedStocks'
+import AgentMarketplace from '@/components/AgentMarketplace'
 
 type Execution = { id: string; state: string; provider?: string; amountUsd: number; quoteId?: string; providerOrderId?: string; txHash?: string }
 type Result = { plan?: { intent: { type: string; amountUsd: number | null }; defencial: { allowed: boolean; needsApproval: boolean; reason: string }; policy?: { allowed: boolean; needsApproval: boolean; reason: string } }; execution?: Execution; quote?: { message?: string; quoteId?: string; raw?: any }; error?: string }
@@ -177,6 +178,7 @@ export default function Home() {
       <section className="card providersCard"><div className="sectionHead"><div><div className="sectionKicker">03 · EXECUTION STACK</div><h2>Connected infrastructure</h2></div><span className="liveSmall"><span className="miniPulse" /> 3 CONNECTED</span></div><div className="providers"><div className="provider"><div className="providerIcon bankr">B</div><div><strong>Bankr</strong><span>Agent & wallet operations</span></div><i>READY</i></div><div className="provider"><div className="providerIcon def">D</div><div><strong>Definitive Flash</strong><span>DCA & advanced order planning</span></div><i>ADAPTER</i></div><div className="provider"><div className="providerIcon uni">U</div><div><strong>Uniswap</strong><span>Spot routing on Base</span></div><i>ROUTER</i></div></div></section>
       <TokenizedStocks wallet={wallet} />
       {result?.execution && <section className="card timelineCard"><div className="sectionHead"><div><div className="sectionKicker">04 · OPERATIONS</div><h2>Execution timeline</h2></div><span className="stateBadge">{result.execution.state.replace('_', ' ')}</span></div><div className="timeline">{states.map((state, index) => <div className={`step ${index <= stateIndex ? 'active' : ''}`} key={state}><span className="dot" /><div><strong>{state.replace('_', ' ')}</strong><small>{state === 'awaiting_approval' ? 'Defencial approval gate' : state === 'quoted' ? 'Provider quote prepared' : state === 'signing' ? 'Wallet signing in progress' : state === 'submitted' ? 'Provider accepted the order' : state === 'confirmed' ? 'Chain confirmation' : 'Execution state'}</small></div></div>)}</div><p className="previewNote">Signing is an explicit wallet action. Flitzr never receives or stores private keys.</p></section>}
+      <AgentMarketplace />
       <footer><span>FLITZR · DEFENCIAL · PRIVY · BASE</span><span>Autonomous finance, with explicit user control.</span></footer>
     </main>
   )
