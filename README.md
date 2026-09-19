@@ -2,7 +2,7 @@
 
 <div align="center">
 
-**Defencial Autonomous Financial Agent on Base**
+**Defencial Autonomous Finance Agent on Base**
 
 [![Base](https://img.shields.io/badge/Base-Mainnet_8453-0052FF?style=for-the-badge&logo=coinbase&logoColor=white)](https://base.org)
 [![Runtime](https://img.shields.io/badge/Runtime_NYC-Sep_13–19_2026-FF4D00?style=for-the-badge)](https://runtime.nyc/handbook)
@@ -20,7 +20,7 @@
 
 ## About Flitzr
 
-Flitzr is an autonomous onchain financial agent designed to turn natural-language financial goals into controlled execution plans on **Base**.
+Flitzr is an autonomous onchain agent designed to turn natural-language financial goals into controlled execution plans on **Base**.
 
 Instead of allowing an AI agent to execute transactions freely, Flitzr introduces **Defencial** — a deterministic control layer that evaluates spending limits, daily budgets, and approval requirements before execution.
 
