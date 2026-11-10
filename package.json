@@ -1,38 +1,13 @@
 {
-  "name": "flitzr",
-  "version": "0.1.0",
+  "name": "flitzr-forge",
+  "version": "1.0.0",
   "private": true,
+  "description": "Atlassian Forge Rovo finance policy evaluator",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build --webpack",
-    "start": "next start",
-    "lint": "eslint ."
+    "test": "node --test",
+    "lint": "forge lint"
   },
-  "dependencies": {
-    "@dynamic-labs-wallet/node": "^1.1.11",
-    "@dynamic-labs-wallet/node-evm": "^1.1.11",
-    "@openzeppelin/contracts": "5.4.0",
-    "@privy-io/node": "^0.34.0",
-    "@privy-io/react-auth": "^3.43.0",
-    "@stripe/stripe-js": "^9.16.0",
-    "@vercel/postgres": "^0.10.0",
-    "@x402/core": "^2.26.0",
-    "@x402/evm": "^2.25.0",
-    "@x402/next": "^2.25.0",
-    "next": "^16.3.5",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "viem": "^2.37.0",
-    "@farcaster/mini-app-solana": "^2.0.0",
-    "@solana/wallet-adapter-react": "^0.15.39",
-    "@farcaster/miniapp-sdk": "^0.1.2"
-  },
-  "devDependencies": {
-    "@types/node": "^20.0.0",
-    "@types/react": "^19.0.0",
-    "@types/react-dom": "^19.0.0",
-    "typescript": "^5.0.0",
-    "eslint": "^9.0.0",
-    "eslint-config-next": "^16.3.5"
+  "engines": {
+    "node": ">=20"
   }
 }

@@ -1,44 +1,26 @@
 # Flitzr Security Model
 
-## Principle
+## Current security boundary
 
-Flitzr follows **intent → policy → approval → execution → confirmation**. No model response is itself authorization to move funds.
+The Forge prototype performs deterministic policy evaluation only. It does not connect to wallets or bank accounts, sign transactions, submit orders, transfer funds, or broadcast transactions.
 
-## API credentials
+## Input handling
 
-Sponsor API keys are server-side environment variables only. They must never be committed, rendered in the browser, or pasted into public issues/screenshots.
+- Require an explicit positive proposed amount.
+- Require an explicit non-negative confirmed daily-spend amount.
+- Reject blank strings, malformed values, negative values, and non-finite numbers.
+- Never infer missing financial values from natural-language context.
+- Treat issue descriptions and other user-provided content as untrusted input.
 
-For Bankr, use least-privilege keys, read-only mode during development, IP allowlisting where practical, and a dedicated agent wallet. Bankr also supports recipient allowlists for relevant wallet operations.
+## Policy semantics
 
-## Transaction safety
+The USD 25 single-expense limit and USD 100 daily limit are illustrative constants for the demo. They are not live account balances, persisted policies, or payment authorization.
 
-- Reject malformed or missing amounts.
-- Enforce chain and asset allowlists.
-- Enforce per-action and daily budgets.
-- Require explicit approval above the configured threshold.
-- Display destination, asset, amount and provider before signing.
-- Treat provider responses as untrusted until validated.
-- Never assume a submitted transaction succeeded without confirmation.
+## Production security work
 
-## Secrets
-
-Required local variables:
-
-```text
-BANKR_API_KEY=
-DEFINITIVE_API_KEY=
-```
-
-Use Vercel environment variables for deployment. `.env.local` remains local and is ignored by Git.
-
-## Production hardening checklist
-
-- [ ] Add authenticated user sessions.
-- [ ] Bind policies to a user/wallet identity.
-- [ ] Add persistent execution ledger with idempotency keys.
-- [ ] Add rate limiting on agent and execution endpoints.
-- [ ] Add server-side audit logs without secrets.
-- [ ] Add replay protection for approvals.
-- [ ] Add provider timeout/retry policies.
-- [ ] Add monitoring and alerting.
-- [ ] Run testnet/small-fund validation before enabling live execution.
+- Add tenant-scoped configuration and access controls.
+- Verify the source and freshness of any financial data.
+- Persist auditable decisions with privacy-aware retention.
+- Threat-model prompt injection, forged inputs, replay, and cross-tenant access.
+- Add a separately reviewed human-approval workflow before considering any execution integration.
+- Request only the minimum Atlassian scopes required by implemented features.

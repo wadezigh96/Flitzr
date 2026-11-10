@@ -1,65 +1,67 @@
-# Flitzr
+# Flitzr — Finance Guardian for Atlassian
 
 **Understand the work. Check the spend. Keep humans in control.**
 
-Flitzr is a finance-agent project. Its Codegeist 2026 submission track is a dedicated Atlassian Forge and Rovo prototype: a deterministic evaluator for proposed spending.
+Flitzr is an Atlassian Forge app prototype with a Rovo agent and a deterministic finance-policy action. It evaluates a proposed expense against clearly labelled demo limits and explains when human approval is required.
 
-## Codegeist 2026 — Flitzr Finance Guardian
+## What it does
 
-The Forge prototype includes:
+- **Rovo Agent — Flitzr Finance Guardian:** helps teams review proposed operational spending.
+- **Deterministic policy action:** validates supplied USD amounts and returns a reproducible decision.
+- **Rovo MCP declaration:** exposes the policy action as a tool for Rovo (MCP availability is a Preview capability and must be verified in the target site).
+- **Human control:** identifies approval requirements; it does not authorize or execute payments.
 
-- **Rovo Agent:** Flitzr Finance Guardian explains budget exposure and approval requirements.
-- **Policy action:** checks explicitly supplied USD amounts against illustrative demo limits.
-- **Rovo MCP:** exposes the policy action to customer-created Rovo agents (Preview capability).
-- **Read-only boundary:** this Forge prototype does not connect to wallets, sign transactions, submit orders, transfer funds, or access live financial balances.
+## Demo policy (illustrative only)
 
-### Demo policy
-
-| Rule | Demo value |
-|---|---:|
-| Maximum single action | USD 25 |
+| Rule | Value |
+| --- | ---: |
+| Maximum single expense | USD 25 |
 | Maximum daily spend | USD 100 |
-| Above single-action limit | Human approval required |
-| Projected daily spend above limit | Blocked |
+| Single expense above USD 25 | Human approval required |
+| Projected daily spend above USD 100 | Blocked |
 
-These are illustrative demo values, not live balances, customer policies, or financial advice.
+These are hard-coded demonstration values. They are not live balances, financial advice, or customer-configured policies.
 
-## Forge app files
+## Safety boundary
 
-- `manifest.yml` — Forge app ID, modules, Rovo Agent, action, and MCP declaration.
+This Forge app is an **evaluation-only prototype**. It does not connect to wallets or bank accounts, fetch verified financial balances, sign transactions, submit orders, transfer funds, or broadcast transactions. It must never claim that money moved.
+
+The action requires an explicit proposed amount and an explicit confirmed daily-spend value. Missing, blank, malformed, negative, or non-finite values are rejected rather than guessed.
+
+## Repository layout
+
+- `manifest.yml` — Forge app, Rovo agent, action, and MCP declarations.
 - `src/index.js` — deterministic policy evaluator.
-- `docs/CODEGEIST-2026.md` — submission scope and implementation notes.
-- `docs/DEMO_SCRIPT.md` — draft demo sequence.
-- `docs/PRODUCTION_CHECKLIST.md` — validation and readiness checklist.
+- `test/index.test.js` — built-in Node.js tests.
+- `docs/ARCHITECTURE.md` — request flow and trust boundaries.
+- `docs/CODEGEIST-2026.md` — project scope and remaining work.
+- `docs/DEMO_SCRIPT.md` — demo outline.
+- `docs/PRODUCTION_CHECKLIST.md` — validation and release checklist.
+- `docs/SECURITY.md` — security boundary and threat considerations.
 
-The Atlassian Forge App ID is configured in `manifest.yml`. The app has **not** yet been validated, deployed, or installed in an Atlassian development site.
+## Local checks
 
-### Development workflow
+Requires Node.js 20 or newer.
 
-1. Install and authenticate the Forge CLI.
-2. From the repository root, run `forge lint` and resolve all manifest issues.
-3. Test the policy function and review the package.
-4. Only after validation, explicitly approve deployment to a development environment and installation on a test Atlassian site.
+```bash
+npm test
+```
 
-Do not deploy to production or submit to Devpost before end-to-end testing and final review.
+Install and authenticate the Atlassian Forge CLI separately, then run:
 
-## Existing Flitzr platform — separate from Codegeist prototype
+```bash
+forge lint
+forge install --help
+```
 
-This repository also retains the earlier Next.js/Base application and its wallet, provider, x402, execution-ledger, and Solidity components. Those components are **not used by the Forge prototype**.
+Do not run `forge deploy`, install the app, or submit the project until the manifest, action contract, and development-site behavior have been reviewed and explicitly approved.
 
-Important distinction: the existing web application has wallet-based signing and order-submission flows after explicit user approval. Therefore, only the Forge prototype is described as read-only; the entire Flitzr repository/application must not be represented as read-only.
+## App identity
 
-These legacy platform files are retained for now to avoid deleting existing product functionality. They are outside the Codegeist demo scope.
+The registered Forge app ID is configured in `manifest.yml`. Do not run `forge register` again unless Atlassian app registration has been deliberately reviewed; re-registering can create a different app identity.
 
-## Safety
+## Project links
 
-**The model proposes. Deterministic policy evaluates. A human remains in control.**
-
-Never commit credentials, private keys, seed phrases, or `.env.local`. Never connect the legacy wallet execution path to the Forge prototype without a separate security review and explicit approval.
-
-## Links
-
-- Web app: https://flitzr.vercel.app
-- GitHub: https://github.com/wadezigh96/Flitzr
-- Atlassian Forge build guide: https://developer.atlassian.com/platform/forge/build-and-launch-your-forge-app/
+- Repository: https://github.com/wadezigh96/Flitzr
+- Atlassian Forge build and launch guide: https://developer.atlassian.com/platform/forge/build-and-launch-your-forge-app/
 - Codegeist 2026: https://codegeist2026.devpost.com/

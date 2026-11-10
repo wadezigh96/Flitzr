@@ -1,26 +1,38 @@
 const MAX_SINGLE_SPEND_USD = 25;
 const MAX_DAILY_SPEND_USD = 100;
 
-function finiteNonNegative(value, fieldName) {
-  const parsed = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) {
-    throw new Error(fieldName + " must be a finite, non-negative number.");
+function requireNumber(value, fieldName, { allowZero = true } = {}) {
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new Error(fieldName + " must be a finite number.");
   }
-  return parsed;
+  if (value < 0 || (!allowZero && value === 0)) {
+    throw new Error(fieldName + (allowZero ? " must be non-negative." : " must be greater than zero."));
+  }
+  return value;
 }
 
 exports.evaluateFinancePolicy = async (payload = {}, context = {}) => {
-  const amountUsd = finiteNonNegative(payload.amountUsd, "amountUsd");
-  const dailySpentUsd = finiteNonNegative(payload.dailySpentUsd, "dailySpentUsd");
-  if (amountUsd <= 0) throw new Error("amountUsd must be greater than zero.");
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("A valid action payload is required.");
+  }
+
+  const amountUsd = requireNumber(payload.amountUsd, "amountUsd", { allowZero: false });
+  const dailySpentUsd = requireNumber(payload.dailySpentUsd, "dailySpentUsd");
 
   const projectedDailySpendUsd = dailySpentUsd + amountUsd;
+  if (!Number.isFinite(projectedDailySpendUsd)) {
+    throw new Error("Projected daily spend is outside the supported numeric range.");
+  }
+
   const remainingBeforeUsd = Math.max(0, MAX_DAILY_SPEND_USD - dailySpentUsd);
   const remainingAfterUsd = Math.max(0, MAX_DAILY_SPEND_USD - projectedDailySpendUsd);
   const blocked = projectedDailySpendUsd > MAX_DAILY_SPEND_USD;
   const needsApproval = !blocked && amountUsd > MAX_SINGLE_SPEND_USD;
-  const decision = blocked ? "BLOCK_DAILY_LIMIT" :
-    needsApproval ? "HUMAN_APPROVAL_REQUIRED" : "ALLOW_WITHIN_DEMO_LIMITS";
+  const decision = blocked
+    ? "BLOCK_DAILY_LIMIT"
+    : needsApproval
+      ? "HUMAN_APPROVAL_REQUIRED"
+      : "ALLOW_WITHIN_DEMO_LIMITS";
 
   return {
     product: "Flitzr",
@@ -37,9 +49,14 @@ exports.evaluateFinancePolicy = async (payload = {}, context = {}) => {
     projectedDailySpendUsd,
     remainingBeforeUsd,
     remainingAfterUsd,
-    limits: { maxSingleSpendUsd: MAX_SINGLE_SPEND_USD, maxDailySpendUsd: MAX_DAILY_SPEND_USD },
+    limits: {
+      maxSingleSpendUsd: MAX_SINGLE_SPEND_USD,
+      maxDailySpendUsd: MAX_DAILY_SPEND_USD
+    },
     purpose: typeof payload.purpose === "string" ? payload.purpose.slice(0, 240) : null,
-    jiraIssueKey: context && context.jira ? context.jira.issueKey || null : null,
+    jiraIssueKey: context && context.jira && typeof context.jira.issueKey === "string"
+      ? context.jira.issueKey
+      : null,
     explanation: blocked
       ? "Blocked: this action would exceed the USD 100 demo daily budget."
       : needsApproval
