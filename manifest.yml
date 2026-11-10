@@ -1,5 +1,5 @@
 app:
-  id: ari:cloud:ecosystem::app/REPLACE_WITH_FORGE_APP_ID
+  id: ari:cloud:ecosystem::app/903e12c5-20be-48bd-a9b2-2f9d6ce524b6
   runtime:
     name: nodejs24.x
 modules:
