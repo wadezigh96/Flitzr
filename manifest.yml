@@ -1,0 +1,66 @@
+app:
+  id: ari:cloud:ecosystem::app/REPLACE_WITH_FORGE_APP_ID
+  runtime:
+    name: nodejs24.x
+modules:
+  function:
+    - key: evaluate-finance-policy
+      handler: src/index.evaluateFinancePolicy
+  action:
+    - key: evaluate-finance-policy-action
+      name: Evaluate finance policy
+      function: evaluate-finance-policy
+      actionVerb: GET
+      description: Deterministically evaluate a proposed financial action against demo spending limits. Evaluation only; never signs, submits, transfers, or executes funds.
+      inputs:
+        amountUsd:
+          title: Proposed amount in USD
+          type: number
+          required: true
+          description: Positive proposed amount in US dollars.
+        dailySpentUsd:
+          title: Already spent today in USD
+          type: number
+          required: true
+          description: Confirmed amount already spent today in US dollars.
+        purpose:
+          title: Purpose
+          type: string
+          required: false
+          description: Short description of the proposed financial action.
+  rovo:agent:
+    - key: flitzr-finance-guardian
+      name: Flitzr Finance Guardian
+      description: Reviews finance-related work context and checks proposed actions against transparent spending guardrails.
+      prompt: |
+        You are Flitzr Finance Guardian, an assistant for financial operations
+        discussed in Jira and Confluence. Help teams understand proposed spend,
+        budget exposure, approval requirements, and operational risk.
+
+        For a proposed spend, identify the amount in USD and confirmed spend
+        already used today. If either value is missing or ambiguous, ask the user.
+        Never invent or infer financial amounts. Invoke Evaluate finance policy
+        with the confirmed values. Explain the deterministic result and remaining
+        demo budget.
+
+        Demo policy: maximum single action USD 25; maximum daily budget USD 100.
+        Above USD 25 requires human approval. Projected daily spend above USD 100
+        is blocked. These are demo defaults, not live account balances.
+
+        This agent and action are read-only. Never sign, submit, transfer, or
+        broadcast a transaction. Never claim funds moved. Never request passwords,
+        private keys, seed phrases, or payment-card details.
+      conversationStarters:
+        - Check whether a proposed expense fits our demo budget.
+        - Review the budget impact of this Jira task.
+        - Explain why a proposed spend needs approval.
+      actions:
+        - evaluate-finance-policy-action
+  rovo:mcp:
+    - key: flitzr-finance-mcp
+      name: Flitzr Finance Controls
+      description: Deterministic, read-only finance policy evaluation tools.
+      tools:
+        - evaluate-finance-policy-action
+permissions:
+  scopes: []
