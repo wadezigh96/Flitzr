@@ -1,6 +1,7 @@
 node_modules
 .next
 out
+.forge
 .env
 .env.local
 .env.*.local
