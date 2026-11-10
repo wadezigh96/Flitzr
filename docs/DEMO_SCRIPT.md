@@ -1,44 +1,13 @@
-# Flitzr Demo Script
+# Flitzr Codegeist Demo — Draft
 
-## 90-second flow
+Target duration: 2–3 minutes. Record only after the app is installed and tested in a development Atlassian site.
 
-**1. The problem — 10s**
+1. Open a Jira issue describing a proposed operational expense.
+2. Open Flitzr Finance Guardian in Rovo.
+3. Ask it to evaluate a USD 20 expense with USD 30 already spent today.
+4. Show the result: projected daily spend USD 50, remaining demo budget USD 50, within demo limits.
+5. Ask it to evaluate USD 30 with USD 80 already spent today.
+6. Show the result: blocked because projected daily spend would be USD 110.
+7. Explain that the Forge action is deterministic and read-only. No wallet is connected, no transaction is signed, and no funds move.
 
-Bankr, HeyAnon, Griffain can parse a sentence and fire a trade. The failure mode is already public: prompt injection has drained agent wallets on Base. Flitzr puts **Defencial** between intent and money.
-
-**2. Natural language — 15s**
-
-Enter:
-
-`DCA $20 of ETH every week on Base`
-
-Show the parsed DCA intent and the $20 amount.
-
-**3. Defencial — 15s**
-
-- Base
-- $25 single-trade limit
-- $100 daily budget
-- approval required above $25
-
-The model proposes. Defencial decides.
-
-**4. Separation of wallets — 15s**
-
-- User funds: Privy session, user signs
-- Agent: Dynamic server wallet on Base — open `/api/dynamic/status`
-- Rails: Bankr / Definitive / Uniswap — planner stays preview-only
-
-**5. Guardrail — 15s**
-
-`Buy $150 of ETH on Base` — blocked by the $100 daily Defencial.
-
-`Buy $50 of ETH on Base` — inside daily budget, approval required above $25.
-
-**6. Close — 20s**
-
-We are not replacing Bankr or MetaMask. They are rails and wallets. Flitzr is the gate: intent, Defencial, quote, approval, sign, settle. Never broadcast blind.
-
-## Rules
-
-No API keys on screen. Do not claim x402 is paid unless the response is HTTP 402. Confirm Dynamic status address does not change between two refreshes before recording.
+Do not record placeholder screens as working functionality. Do not display secrets, private keys, or personal finance data. Label the USD 25 / USD 100 thresholds as demo policy values.
