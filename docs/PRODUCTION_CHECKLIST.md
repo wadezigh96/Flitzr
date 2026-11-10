@@ -1,43 +1,33 @@
-# Flitzr Production Checklist
+# Flitzr — Codegeist / Production Readiness
 
-## Core execution
-- [x] Intent parsing
-- [x] Policy evaluation
-- [x] Execution state machine
-- [x] Provider abstraction
-- [x] Audit event model
-- [x] Preview-only execution endpoint
-- [ ] Persistent execution database
-- [ ] Idempotency keys
-- [ ] Wallet signature/approval UX
-- [ ] Transaction submission
-- [ ] Confirmation watcher
+## Forge prototype
+- [x] Dedicated Codegeist branch created
+- [x] Initial Forge manifest drafted
+- [x] Rovo Finance Guardian agent declared
+- [x] Deterministic read-only policy action implemented
+- [x] Rovo MCP tool declaration added (Preview capability)
+- [ ] Replace placeholder Forge app ID
+- [ ] Run Forge CLI lint and package validation
+- [ ] Install on a development Atlassian site
+- [ ] Verify Rovo action invocation
+- [ ] Verify MCP tool discovery where Preview access is available
+- [ ] Record an actual end-to-end demo
 
-## Provider layer
-- [x] Bankr adapter
-- [x] Definitive adapter
-- [ ] Uniswap adapter
-- [ ] Provider health checks
-- [ ] Quote expiry validation
-- [ ] Retry/backoff policy
+## Product and security
+- [x] No wallet signing or transaction execution in Forge prototype
+- [x] Numeric input validation in policy evaluator
+- [x] No Atlassian OAuth scopes requested by initial evaluator
+- [ ] Tenant-scoped policy configuration
+- [ ] Durable, privacy-reviewed audit trail
+- [ ] Jira/Confluence data integration with minimum required scopes
+- [ ] Threat model and abuse testing
+- [ ] Privacy and data-retention review
 
-## Security
-- [x] Server-only secrets
-- [x] Policy gate before execution
-- [x] Explicit approval state
-- [ ] Authentication/session binding
-- [ ] Per-user policy storage
-- [ ] Rate limiting
-- [ ] Replay protection
-- [ ] Structured server audit storage
+## Submission
+- [ ] Confirm Codegeist eligibility and current category rules
+- [ ] Final product description and screenshots
+- [ ] Demo video within event limits
+- [ ] Test installation link
+- [ ] Final human review and explicit submission approval
 
-## Hackathon demo
-- [ ] Wallet connect
-- [ ] DCA demo
-- [ ] Limit demo
-- [ ] Approval gate demo
-- [ ] Social strategy/leaderboard view
-- [ ] Recorded demo
-- [ ] Submission package
-
-Flitzr should not move from preview-only to live execution until the unchecked security and persistence controls are implemented and tested.
+The Forge prototype must remain read-only until security, persistence, authorization, and user-approval controls are independently implemented and tested.
