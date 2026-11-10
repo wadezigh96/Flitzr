@@ -1,90 +1,53 @@
 # Flitzr Architecture
 
-## Product
-Flitzr is a policy-first autonomous onchain financial agent for Base. The agent may interpret natural language, but execution is always constrained by explicit policy and a user approval boundary.
+## Product boundaries
 
-## System flow
+Flitzr now has two related but separately deployed surfaces:
 
-```text
-Browser
-  │
-  ├── Wallet session (Base)
-  │
-  ▼
-Next.js App
-  │
-  ├── Intent Parser
-  ├── Policy Engine ───────────────┐
-  ├── Execution Planner            │ deny / approval required
-  │                                │
-  ├── Sponsor Adapters ◄───────────┘
-  │     ├── Bankr Agent / Wallet API
-  │     ├── Definitive Flash
-  │     └── Uniswap routing
-  │
-  ▼
-Approval Gate
-  │
-  ▼
-Transaction / Order Executor
-  │
-  ▼
-Base Mainnet
-```
+1. Existing finance platform: Next.js, Base integrations, wallet authentication, provider adapters, execution ledger, and Solidity utility contract.
+2. Codegeist Forge prototype: Rovo Finance Guardian plus a deterministic read-only finance policy action.
+
+The Forge prototype does not invoke the existing wallet or transaction execution code.
+
+## Forge request flow
+
+Rovo Agent
+  -> Extract explicitly supplied USD amount and confirmed daily spend
+  -> Ask the user if either value is missing or ambiguous
+  -> Forge action
+  -> Deterministic input validation
+  -> Demo policy evaluation
+  -> Return decision, projected daily spend, remaining demo budget
+  -> Rovo explains the result
+
+## Demo policy
+
+- Maximum single action: USD 25
+- Maximum daily spend: USD 100
+- Amount above USD 25: human approval required
+- Projected daily spend above USD 100: blocked
+
+These values are illustrative and are not persisted, tenant-configurable, or connected to real financial accounts.
+
+## Forge modules
+
+- manifest.yml — Forge app ID, Node.js runtime, action, Rovo Agent, and Rovo MCP declaration.
+- src/index.js — deterministic read-only policy evaluator.
+- permissions.scopes is empty because the first action does not call Jira or Confluence APIs.
 
 ## Trust boundaries
 
-1. **Client boundary** — wallet address, UI state and user intent only. Never expose sponsor API keys.
-2. **Server boundary** — sponsor credentials, policy evaluation and quote orchestration.
-3. **Approval boundary** — state-changing actions require an explicit user confirmation when policy says approval is required.
-4. **Chain boundary** — transaction/order IDs are persisted as references; the app does not assume success until the provider/chain confirms it.
+1. Rovo may interpret natural-language context, but must not invent missing amounts.
+2. The Forge action validates numeric inputs independently.
+3. The policy action only returns an evaluation. It cannot approve, sign, submit, transfer, or broadcast.
+4. Jira issue context may be returned as a reference only; this prototype does not fetch issue data through the REST API.
+5. The existing onchain platform remains outside the Forge execution path.
 
-## Core modules
+## Production requirements
 
-- `lib/policy.ts` — deterministic policy evaluation.
-- `lib/bankr.ts` — Bankr Agent API adapter.
-- `lib/definitive.ts` — Definitive Flash adapter.
-- `app/api/plan` — intent → policy → quote planning endpoint.
-- `app/api/agent` — protected server-side Bankr prompt endpoint.
-- `app/page.tsx` — demo dashboard.
-
-## Execution states
-
-`draft → planned → quoted → approval_required → signing → submitted → confirmed`
-
-Failure states are terminal for that attempt: `rejected`, `expired`, `failed`, or `cancelled`.
-
-## Policy model
-
-The first demo policy is:
-
-- Chain: Base
-- Max daily budget: $100
-- Approval threshold: $25
-- No state-changing execution from the planner
-
-The policy engine must remain deterministic and independent of the LLM. The LLM can propose an intent; it cannot override policy.
-
-## Sponsor strategy
-
-Bankr is the agent/wallet orchestration layer. Definitive is the advanced-order execution layer. Base is the settlement chain. Uniswap is an optional routing layer for spot swaps. Sponsor adapters must be replaceable so Flitzr is not coupled to a single provider.
-
-## Security
-
-- Keep `BANKR_API_KEY` and `DEFINITIVE_API_KEY` server-only.
-- Prefer least-privilege API keys and read-only mode during development.
-- Use a dedicated agent wallet for automated execution.
-- Add recipient allowlists and IP allowlists where supported.
-- Never store private keys in the repository.
-- Never auto-submit a state-changing transaction merely because an LLM produced a plan.
-
-## Demo narrative
-
-1. User states a financial goal.
-2. Flitzr converts it into a structured intent.
-3. Policy engine explains exactly what is allowed.
-4. Sponsor adapter produces a quote/order plan.
-5. User sees the route, amount, limits and approval requirement.
-6. Only after approval can the execution layer submit a real action.
-
-This separation makes the system auditable, testable and easier to extend with additional sponsors.
+- Replace demo thresholds with tenant-scoped policy configuration.
+- Persist audit events with appropriate retention and privacy controls.
+- Add only the minimum Jira/Confluence scopes required by implemented read APIs.
+- Add explicit approval and authorization before any future financial execution integration.
+- Threat-model prompt injection, untrusted issue content, replay, cross-tenant access, and forged action inputs.
+- Do not connect live wallets or enable transactions in the Codegeist prototype.
