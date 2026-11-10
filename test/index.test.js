@@ -17,8 +17,9 @@ test("requires human approval above the single-expense limit", async () => {
 });
 
 test("blocks projected daily spend above the daily limit", async () => {
-  const result = await evaluateFinancePolicy({ amountUsd: 20, dailySpentUsd: 80 });
+  const result = await evaluateFinancePolicy({ amountUsd: 21, dailySpentUsd: 80 });
   assert.equal(result.decision, "BLOCK_DAILY_LIMIT");
+  assert.equal(result.projectedDailySpendUsd, 101);
   assert.equal(result.allowedToProceedToApproval, false);
 });
 
