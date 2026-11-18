@@ -1,17 +1,19 @@
 app:
-  id: ari:cloud:ecosystem::app/903e12c5-20be-48bd-a9b2-2f9d6ce524b6
+  id: ari:cloud:ecosystem::app/0a82f923-7358-413b-b86f-0f88a9e53a47
   runtime:
     name: nodejs24.x
 modules:
   function:
     - key: evaluate-finance-policy
-      handler: src/index.evaluateFinancePolicy
+      handler: index.evaluateFinancePolicy
   action:
     - key: evaluate-finance-policy-action
       name: Evaluate finance policy
       function: evaluate-finance-policy
       actionVerb: GET
-      description: Deterministically evaluate a proposed financial action against demo spending limits. Evaluation only; never signs, submits, transfers, or executes funds.
+      description: Deterministically evaluate a proposed financial action against demo
+        spending limits. Evaluation only; never signs, submits, transfers, or
+        executes funds.
       inputs:
         amountUsd:
           title: Proposed amount in USD
@@ -31,7 +33,8 @@ modules:
   rovo:agent:
     - key: flitzr-finance-guardian
       name: Flitzr Finance Guardian
-      description: Reviews finance-related work context and checks proposed actions against transparent spending guardrails.
+      description: Reviews finance-related work context and checks proposed actions
+        against transparent spending guardrails.
       prompt: |
         You are Flitzr Finance Guardian, an assistant for financial operations
         discussed in Jira and Confluence. Help teams understand proposed spend,

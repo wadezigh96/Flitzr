@@ -96,7 +96,7 @@ into the Devpost form.
    Controls" MCP server exposed by the installed app. External MCP
    exposure is disabled by default; a site or org admin enables it per
    installation under Apps > Sites > your site > Connected apps. The
-   MCP endpoint is `https://mcp.atlassian.com/forge/903e12c5-20be-48bd-a9b2-2f9d6ce524b6`.
+   MCP endpoint is `https://mcp.atlassian.com/forge/0a82f923-7358-413b-b86f-0f88a9e53a47`.
 7. Note: the USD 25 and USD 100 limits are hard-coded demonstration
    values, not live balances or customer-configured policies.
 
@@ -117,8 +117,9 @@ Devpost form.
 
 ## Pre-submit checklist
 
-- [ ] `forge login` and `forge lint` pass with no errors.
-- [ ] Deployed to development and installed on a test site.
+- [x] `forge login` and `forge lint` pass with no errors (18 Nov 2026).
+- [x] Deployed to development (version 2.0.0, 18 Nov 2026).
+- [ ] Installed on a test site.
 - [ ] Rovo agent verified end to end on the test site.
 - [ ] MCP tool discovery verified where Preview access is available.
 - [ ] Installation link created and pasted above.

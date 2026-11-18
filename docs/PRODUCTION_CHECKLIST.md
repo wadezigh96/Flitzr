@@ -8,14 +8,15 @@
 - [x] Node.js unit tests included
 - [x] MIT LICENSE added
 - [x] Run `npm test` in a clean environment (14 tests, all passing, 18 Nov 2026)
-- [ ] Run Forge CLI lint and resolve manifest issues (CLI 15.1.0 installed;
-  lint needs `forge login`. One manifest issue already fixed: removed the
-  unsupported `description` from the `rovo:mcp` module.)
+- [x] Run Forge CLI lint and resolve manifest issues (`forge lint`
+  passes with no issues, 18 Nov 2026; fixed the `rovo:mcp` description
+  and the function handler path)
 - [x] Verify payload and context behavior against the current Forge contract
   (manual schema check, 18 Nov 2026; see `docs/AUDIT-2026-11-18.md`)
 
 ## Development-site validation
-- [ ] Deploy to a development environment only after explicit approval
+- [x] Deploy to a development environment only after explicit approval
+  (deployed version 2.0.0, 18 Nov 2026)
 - [ ] Install on a test Atlassian site
 - [ ] Verify Rovo agent invocation and action inputs
 - [ ] Verify MCP tool discovery where Preview access is available

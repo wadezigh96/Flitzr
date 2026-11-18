@@ -24,15 +24,19 @@ The prototype uses hard-coded demo thresholds (USD 25 per expense and USD 100 da
 
 ## Remaining work
 
-- [x] Forge CLI installed (15.1.0, local install, 18 Nov 2026). `forge lint`
-  still needs `forge login` first.
+- [x] Forge CLI installed (15.1.0, local install, 18 Nov 2026) and
+  `forge lint` passes with no issues (18 Nov 2026).
 - [x] Validated the manifest and action payload against the current Forge
   platform contract by manual schema check (18 Nov 2026; see
-  `docs/AUDIT-2026-11-18.md`). One issue found and fixed: removed the
-  unsupported `description` property from the `rovo:mcp` module.
+  `docs/AUDIT-2026-11-18.md`). Issues found and fixed: removed the
+  unsupported `description` property from the `rovo:mcp` module, and
+  corrected the function handler path (`src/index.` to `index.`).
 - [x] Ran all local tests and added missing edge cases (14 tests, all
   passing, 18 Nov 2026).
-- [ ] Deploy only to a development environment after explicit approval.
+- [x] Deployed to the development environment (version 2.0.0,
+  18 Nov 2026). The app was re-registered first because the old app ID
+  in the manifest was actually the developer space ID; see
+  `docs/AUDIT-2026-11-18.md`.
 - [ ] Install on a test Atlassian site and verify Rovo invocation.
 - [ ] Verify MCP discovery where Preview access is available.
 - [x] Reviewed privacy, security, tenant isolation, and Codegeist
