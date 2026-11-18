@@ -5,9 +5,10 @@ https://codegeist2026.devpost.com/. All submission materials must be in
 English. Deadline: Tuesday, 22 December 2026, 12:00 pm Pacific Time
 (23 December 2026, 03:00 WIB).
 
-Status: draft prepared 18 November 2026. The installation link and the
-demo video link are still placeholders; fill them in after deploy and
-recording, then review and submit.
+Status: draft prepared 18 November 2026. Installation link filled in
+18 November 2026 (production 2.0.0, Sharing with anyone, Jira). The
+demo video link is still a placeholder; fill it in after recording,
+then review and submit.
 
 ## Title
 
@@ -72,9 +73,10 @@ Built on Atlassian Forge and integrated with Rovo:
 
 ## Installation link for judges
 
-TODO — add after deploy. Create it with the Forge sharing flow
-(`forge distribute` / installation link) and paste the link here and
-into the Devpost form.
+https://developer.atlassian.com/console/install/0a82f923-7358-413b-b86f-0f88a9e53a47?signature=AYABeEAhf%2BkjQ%2BUOoBaJzLckiR4AAAADAAdhd3Mta21zAEthcm46YXdzOmttczp1cy13ZXN0LTI6NzA5NTg3ODM1MjQzOmtleS83MDVlZDY3MC1mNTdjLTQxYjUtOWY5Yi1lM2YyZGNjMTQ2ZTcAuAECAQB4CxqLTo9l4lqXuFjNim1xJM%2Bp%2F3TVP9xHS2BrU5DRRucBpIdHuyGQrMLmmRtRx4AVJgAAAH4wfAYJKoZIhvcNAQcGoG8wbQIBADBoBgkqhkiG9w0BBwEwHgYJYIZIAWUDBAEuMBEEDHrNsZ6WZ1v5l24HjAIBEIA7C9HJpD79XF6EtsoXTfp7seGUw252rGB3RCq2yKH8TKM3ETRITAsTrX375%2FLfPc819ko7YPTsGrivZKwAB2F3cy1rbXMAS2Fybjphd3M6a21zOmV1LXdlc3QtMTo3MDk1ODc4MzUyNDM6a2V5LzQ2MzBjZTZiLTAwYzMtNGRlMi04NzdiLTYyN2UyMDYwZTVjYwC4AQICAHi9bVMAkme4qVQX1fQHo6ePw3H40A7cGfz7yrmSfBWMXgETn5MW%2B%2FEGzq%2B5JvIi9kWcAAAAfjB8BgkqhkiG9w0BBwagbzBtAgEAMGgGCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQML%2BkVWfydNPqIILWLAgEQgDu82RjZuMGFeewjwIDrTiGp4QrzHCoGy4%2BPHaEJtmlVAeYsFqKlukqCNxBfV2%2B%2BSEbriEAE7%2BmVj7csVAAHYXdzLWttcwBLYXJuOmF3czprbXM6dXMtZWFzdC0xOjcwOTU4NzgzNTI0MzprZXkvNmMxMjBiYTAtNGNkNS00OTg1LWI4MmUtNDBhMDQ5NTJjYzU3ALgBAgIAeDYASx0XCjkny4iLV6vz%2BKtEGSGT6kdt0QRpkn6D%2FlVEAU1n%2FDAgwnH6bkTBguWEUU0AAAB%2BMHwGCSqGSIb3DQEHBqBvMG0CAQAwaAYJKoZIhvcNAQcBMB4GCWCGSAFlAwQBLjARBAwQGFZpWFHCIv0VJj4CARCAO4SHvJ4pWZU1enVZg6zj1t41ITkIxgVAGDtguqsVLW%2F%2FH91ErXfplBoN6de4ZHqtPtdl%2BxQlEVHf9YqhAgAAAAAMAAAQAAAAAAAAAAAAAAAAANOkJngBqIDz8jHVQjxn3tf%2F%2F%2F%2F%2FAAAAAQAAAAAAAAAAAAAAAQAAADLdnqJgQMyeftCBLEYuhWZmg7IPgw7Aqyf9MDDli7IHWaHBgOEjaBevJJIvnaWY%2F2HnwUkiaKUJUl6IYB7VX%2B9zpZo%3D&product=jira
+
+Distribution status: Sharing with anyone. Product: Jira. Shared
+version: production 2.0.0, deployed 18 November 2026.
 
 ## Testing instructions for judges
 
@@ -119,9 +121,10 @@ Devpost form.
 
 - [x] `forge login` and `forge lint` pass with no errors (18 Nov 2026).
 - [x] Deployed to development (version 2.0.0, 18 Nov 2026).
-- [ ] Installed on a test site.
-- [ ] Rovo agent verified end to end on the test site.
-- [ ] MCP tool discovery verified where Preview access is available.
-- [ ] Installation link created and pasted above.
+- [x] Deployed to production (version 2.0.0, 18 Nov 2026).
+- [x] Installed on a test site (demo site one-atlas-idsa.atlassian.net, Jira, 18 Nov 2026).
+- [x] Rovo agent verified end to end on the test site (USD 20 case: allowed, projected USD 50, 18 Nov 2026).
+- [ ] MCP tool discovery verified where Preview access is available (endpoint verified live 18 Nov 2026: unauthenticated requests return 401 as expected; full tool listing via an MCP client not yet done).
+- [x] Installation link created and pasted above (Sharing with anyone, Jira, 18 Nov 2026).
 - [ ] Demo video recorded, uploaded publicly to YouTube, link pasted above.
 - [ ] Owner reviewed this draft and the Devpost form, then submitted.
