@@ -2,14 +2,47 @@
 
 **Understand the work. Check the spend. Keep humans in control.**
 
-Flitzr is an Atlassian Forge app prototype with a Rovo agent and a deterministic finance-policy action. It evaluates a proposed expense against clearly labelled demo limits and explains when human approval is required.
+Flitzr is an Atlassian Forge prototype for reviewing proposed operational spending before anyone acts. A Rovo agent talks through the expense, and a deterministic policy action checks it against clearly labelled demo limits.
 
-## What it does
+It combines:
 
-- **Rovo Agent — Flitzr Finance Guardian:** helps teams review proposed operational spending.
-- **Deterministic policy action:** validates supplied USD amounts and returns a reproducible decision.
-- **Rovo MCP declaration:** exposes the policy action as a tool for Rovo (MCP availability is a Preview capability and must be verified in the target site).
-- **Human control:** identifies approval requirements; it does not authorize or execute payments.
+- 🤖 **Rovo Agent** — Flitzr Finance Guardian, reviews proposed spending in Jira and Confluence
+- ⚖️ **Policy Action** — deterministic evaluation with strict input validation, no guessing
+- 🔌 **MCP Tools** — the same policy action as a tool for Rovo Studio and MCP-compatible AI clients
+- 🛡️ **Human Control** — flags approval requirements; it never authorizes or executes payments
+- 📊 **Demo Guardrails** — transparent USD 25 single-expense and USD 100 daily limits
+
+> Honest status: Flitzr is deployed to production (version 2.0.0), installed on a demo site, and verified end to end on 18 November 2026 — the Rovo agent evaluated a USD 20 expense against USD 30 already spent and returned the correct decision. This is a demo evaluation only, not a live finance system: no wallets, no bank accounts, no money moved.
+
+## ✨ Product Surface
+
+| Module | What it does |
+| --- | --- |
+| Rovo Agent | Talks through a proposed expense and confirms the amounts before evaluating |
+| Policy Action | Validates USD amounts and returns a reproducible allow, approval, or blocked decision |
+| MCP Server | Exposes the policy action as a tool for custom agents and MCP-compatible clients |
+| Demo Policy | Hard-coded USD 25 single-expense and USD 100 daily limits for the demo |
+| Safety Boundary | Evaluation only; no payments, no live balances, no signed transactions |
+
+## 🔄 How it works
+
+Proposed expense → Agent confirms amounts → Action validates → Decision → Explanation
+
+```mermaid
+flowchart TD
+    A[Proposed expense in Jira] --> B[Flitzr Finance Guardian]
+    B --> C{Amounts confirmed?}
+    C -- No --> D[Ask the user for the missing values]
+    D --> B
+    C -- Yes --> E[Evaluate finance policy action]
+    E --> F{Decision}
+    F -- Within USD 25 and USD 100 --> G[Allow]
+    F -- Above USD 25 --> H[Human approval required]
+    F -- Projected above USD 100 --> I[Blocked]
+    G --> J[Explanation plus remaining budget]
+    H --> J
+    I --> J
+```
 
 ## Demo policy (illustrative only)
 
@@ -51,6 +84,15 @@ Connected apps. Full judge instructions live in
 This Forge app is an **evaluation-only prototype**. It does not connect to wallets or bank accounts, fetch verified financial balances, sign transactions, submit orders, transfer funds, or broadcast transactions. It must never claim that money moved.
 
 The action requires an explicit proposed amount and an explicit confirmed daily-spend value. Missing, blank, malformed, negative, or non-finite values are rejected rather than guessed.
+
+## Runtime layers
+
+| Layer | Responsibility |
+| --- | --- |
+| Rovo agent | Understands the request, confirms the amounts, never invents values |
+| Forge action | Validates inputs and evaluates the policy deterministically |
+| Forge platform | Runs the code and serves the agent and MCP tools |
+| Human reviewer | Makes the final call on approvals and blocked spend |
 
 ## Repository layout
 
