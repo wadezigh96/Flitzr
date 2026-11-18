@@ -51,3 +51,59 @@ test("rejects overflow in projected daily spend", async () => {
     dailySpentUsd: Number.MAX_VALUE
   }));
 });
+
+test("rejects a zero proposed amount", async () => {
+  await assert.rejects(() => evaluateFinancePolicy({ amountUsd: 0, dailySpentUsd: 0 }));
+});
+
+test("allows the exact USD 25 single-expense boundary", async () => {
+  const result = await evaluateFinancePolicy({ amountUsd: 25, dailySpentUsd: 0 });
+  assert.equal(result.decision, "ALLOW_WITHIN_DEMO_LIMITS");
+  assert.equal(result.needsHumanApproval, false);
+});
+
+test("requires human approval just above the single-expense limit", async () => {
+  const result = await evaluateFinancePolicy({ amountUsd: 25.01, dailySpentUsd: 0 });
+  assert.equal(result.decision, "HUMAN_APPROVAL_REQUIRED");
+  assert.equal(result.needsHumanApproval, true);
+});
+
+test("blocks when daily spend is already above the daily limit", async () => {
+  const result = await evaluateFinancePolicy({ amountUsd: 1, dailySpentUsd: 120 });
+  assert.equal(result.decision, "BLOCK_DAILY_LIMIT");
+  assert.equal(result.projectedDailySpendUsd, 121);
+  assert.equal(result.remainingBeforeUsd, 0);
+  assert.equal(result.remainingAfterUsd, 0);
+  assert.equal(result.allowedToProceedToApproval, false);
+});
+
+test("allows an exact daily limit with cent values", async () => {
+  const result = await evaluateFinancePolicy({ amountUsd: 19.99, dailySpentUsd: 80.01 });
+  assert.equal(result.projectedDailySpendUsd, 100);
+  assert.equal(result.decision, "ALLOW_WITHIN_DEMO_LIMITS");
+});
+
+test("truncates a long purpose and nulls a non-string purpose", async () => {
+  const longPurpose = "x".repeat(500);
+  const truncated = await evaluateFinancePolicy({ amountUsd: 10, dailySpentUsd: 0, purpose: longPurpose });
+  assert.equal(truncated.purpose.length, 240);
+
+  const nonString = await evaluateFinancePolicy({ amountUsd: 10, dailySpentUsd: 0, purpose: 42 });
+  assert.equal(nonString.purpose, null);
+});
+
+test("passes through the Jira issue key from context", async () => {
+  const withIssue = await evaluateFinancePolicy(
+    { amountUsd: 10, dailySpentUsd: 0 },
+    { jira: { issueKey: "DEMO-123" } }
+  );
+  assert.equal(withIssue.jiraIssueKey, "DEMO-123");
+
+  const withoutIssue = await evaluateFinancePolicy({ amountUsd: 10, dailySpentUsd: 0 }, {});
+  assert.equal(withoutIssue.jiraIssueKey, null);
+});
+
+test("rejects null and array payloads", async () => {
+  await assert.rejects(() => evaluateFinancePolicy(null));
+  await assert.rejects(() => evaluateFinancePolicy([]));
+});

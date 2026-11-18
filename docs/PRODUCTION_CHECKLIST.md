@@ -6,9 +6,13 @@
 - [x] Deterministic evaluation action implemented
 - [x] Rovo MCP declaration included (Preview capability; not yet verified)
 - [x] Node.js unit tests included
-- [ ] Run `npm test` in a clean environment
-- [ ] Run Forge CLI lint and resolve manifest issues
-- [ ] Verify payload and context behavior against the current Forge contract
+- [x] MIT LICENSE added
+- [x] Run `npm test` in a clean environment (14 tests, all passing, 18 Nov 2026)
+- [ ] Run Forge CLI lint and resolve manifest issues (CLI 15.1.0 installed;
+  lint needs `forge login`. One manifest issue already fixed: removed the
+  unsupported `description` from the `rovo:mcp` module.)
+- [x] Verify payload and context behavior against the current Forge contract
+  (manual schema check, 18 Nov 2026; see `docs/AUDIT-2026-11-18.md`)
 
 ## Development-site validation
 - [ ] Deploy to a development environment only after explicit approval

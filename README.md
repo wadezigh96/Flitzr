@@ -34,10 +34,13 @@ The action requires an explicit proposed amount and an explicit confirmed daily-
 - `src/index.js` — deterministic policy evaluator.
 - `test/index.test.js` — built-in Node.js tests.
 - `docs/ARCHITECTURE.md` — request flow and trust boundaries.
+- `docs/AUDIT-2026-11-18.md` — full audit report.
 - `docs/CODEGEIST-2026.md` — project scope and remaining work.
 - `docs/DEMO_SCRIPT.md` — demo outline.
 - `docs/PRODUCTION_CHECKLIST.md` — validation and release checklist.
 - `docs/SECURITY.md` — security boundary and threat considerations.
+- `docs/SUBMISSION.md` — Devpost submission draft and judge instructions.
+- `LICENSE` — MIT license.
 
 ## Local checks
 

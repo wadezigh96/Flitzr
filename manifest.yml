@@ -59,7 +59,6 @@ modules:
   rovo:mcp:
     - key: flitzr-finance-mcp
       name: Flitzr Finance Controls
-      description: Deterministic, read-only finance policy evaluation tools.
       tools:
         - evaluate-finance-policy-action
 permissions:
