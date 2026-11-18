@@ -6,7 +6,9 @@ English. Deadline: Tuesday, 22 December 2026, 12:00 pm Pacific Time
 (23 December 2026, 03:00 WIB).
 
 Status: draft prepared 18 November 2026. Installation link filled in
-18 November 2026 (production 2.0.0, Sharing with anyone, Jira). The
+18 November 2026 (production 2.0.0, Sharing with anyone, Jira).
+Landing page deployed to Vercel 18 November 2026
+(https://flitzr-lxug.vercel.app/). The
 demo video link is still a placeholder; fill it in after recording,
 then review and submit.
 
@@ -112,6 +114,7 @@ Devpost form.
 
 ## Links
 
+- Live landing page: https://flitzr-lxug.vercel.app/
 - Source code: https://github.com/wadezigh96/Flitzr
 - Forge build and launch guide:
   https://developer.atlassian.com/platform/forge/build-and-launch-your-forge-app/

@@ -133,6 +133,7 @@ The registered Forge app ID is configured in `manifest.yml`. Do not run `forge r
 
 ## Project links
 
+- Live landing page: https://flitzr-lxug.vercel.app/
 - Repository: https://github.com/wadezigh96/Flitzr
 - Atlassian Forge build and launch guide: https://developer.atlassian.com/platform/forge/build-and-launch-your-forge-app/
 - Codegeist 2026: https://codegeist2026.devpost.com/
