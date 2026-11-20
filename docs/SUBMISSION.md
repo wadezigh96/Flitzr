@@ -11,7 +11,13 @@ Landing page deployed to Vercel 18 November 2026
 (https://flitzr-lxug.vercel.app/). Demo
 video uploaded publicly to YouTube 20 November 2026
 (https://youtu.be/InF-f00m1oE, 1:34, under the 5-minute limit).
-Ready to review and submit.
+Submitted to Codegeist 2026 on Devpost 20 November 2026 (submission
+ID 1313154, https://devpost.com/software/flitzr-finance-guardian-for-atlassian).
+Category: Apps for Business Teams. Bonus prize selected: Best Agents
+(the Devpost form allows only one bonus prize choice, so the MCP bonus
+could not be selected as well; the MCP module is described in the
+submitted project description). The submission stays editable until
+the deadline.
 
 ## Title
 
@@ -35,6 +41,10 @@ front of them.
 - **Best app with Atlassian MCP.** Flitzr declares a `rovo:mcp` module
   ("Flitzr Finance Controls") exposing the same policy action as a tool
   for custom agents in Rovo Studio and for MCP-compatible AI clients.
+
+Note: the Devpost form allows only one bonus prize choice. Best Agents
+was selected on 20 November 2026; the MCP module is still described in
+the submitted project description.
 
 ## Description (for the Devpost form)
 
@@ -132,4 +142,4 @@ module. Paste this link into the Devpost form.
 - [ ] MCP tool discovery verified where Preview access is available (endpoint verified live 18 Nov 2026: unauthenticated requests return 401 as expected; full tool listing via an MCP client not yet done).
 - [x] Installation link created and pasted above (Sharing with anyone, Jira, 18 Nov 2026).
 - [x] Demo video recorded, uploaded publicly to YouTube, link pasted above.
-- [ ] Owner reviewed this draft and the Devpost form, then submitted.
+- [x] Owner reviewed this draft and the Devpost form, then submitted (20 Nov 2026, submission ID 1313154, https://devpost.com/software/flitzr-finance-guardian-for-atlassian).
