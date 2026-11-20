@@ -8,9 +8,10 @@ English. Deadline: Tuesday, 22 December 2026, 12:00 pm Pacific Time
 Status: draft prepared 18 November 2026. Installation link filled in
 18 November 2026 (production 2.0.0, Sharing with anyone, Jira).
 Landing page deployed to Vercel 18 November 2026
-(https://flitzr-lxug.vercel.app/). The
-demo video link is still a placeholder; fill it in after recording,
-then review and submit.
+(https://flitzr-lxug.vercel.app/). Demo
+video uploaded publicly to YouTube 20 November 2026
+(https://youtu.be/InF-f00m1oE, 1:34, under the 5-minute limit).
+Ready to review and submit.
 
 ## Title
 
@@ -106,11 +107,12 @@ version: production 2.0.0, deployed 18 November 2026.
 
 ## Demo video
 
-TODO — record only after the app is installed and verified on a test
-site. Requirements: under 5 minutes, publicly visible on YouTube, shows
-the project actually functioning. Follow `docs/DEMO_SCRIPT.md`
-(2–3 minute outline). Paste the YouTube link here and into the
-Devpost form.
+https://youtu.be/InF-f00m1oE
+
+Uploaded publicly to YouTube 20 November 2026. Duration 1:34 (under
+the 5-minute limit). Shows the landing page, the three verified demo
+cases (allowed, human approval required, blocked), and the MCP
+module. Paste this link into the Devpost form.
 
 ## Links
 
@@ -129,5 +131,5 @@ Devpost form.
 - [x] Rovo agent verified end to end on the test site (USD 20 case: allowed, projected USD 50, 18 Nov 2026).
 - [ ] MCP tool discovery verified where Preview access is available (endpoint verified live 18 Nov 2026: unauthenticated requests return 401 as expected; full tool listing via an MCP client not yet done).
 - [x] Installation link created and pasted above (Sharing with anyone, Jira, 18 Nov 2026).
-- [ ] Demo video recorded, uploaded publicly to YouTube, link pasted above.
+- [x] Demo video recorded, uploaded publicly to YouTube, link pasted above.
 - [ ] Owner reviewed this draft and the Devpost form, then submitted.
