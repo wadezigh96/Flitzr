@@ -19,6 +19,17 @@ could not be selected as well; the MCP module is described in the
 submitted project description). The submission stays editable until
 the deadline.
 
+Note (25 Nov 2026): the live Devpost edit form held a different,
+longer project story than this draft. That form text described features
+the app does not have (a finance dashboard, Jira issue panel, admin
+page, webtrigger, monthly budgets) and a USD 80 demo case whose numbers
+were wrong (80 + 20 = 100 does not exceed the USD 100 daily budget; the
+correct outcome is human approval required, not denied). It also linked
+to https://flitzr-lxug.vercel.app/install, which returns a Vercel 404.
+The form was corrected to match this draft on 25 Nov 2026 (6 fields
+replaced, verified on the public page; submission still SUBMITTED, 5/5
+steps).
+
 ## Title
 
 Flitzr — Finance Guardian for Atlassian
@@ -139,7 +150,12 @@ module. Paste this link into the Devpost form.
 - [x] Deployed to production (version 2.0.0, 18 Nov 2026).
 - [x] Installed on a test site (demo site one-atlas-idsa.atlassian.net, Jira, 18 Nov 2026).
 - [x] Rovo agent verified end to end on the test site (USD 20 case: allowed, projected USD 50, 18 Nov 2026).
-- [ ] MCP tool discovery verified where Preview access is available (endpoint verified live 18 Nov 2026: unauthenticated requests return 401 as expected; full tool listing via an MCP client not yet done).
+- [x] MCP tool discovery verified end to end 25 Nov 2026: the
+  "Evaluate finance policy" tool is listed in Rovo Studio and on the
+  agent profile, MCP exposure on the demo site was enabled during the
+  check (it had been disabled), and invoking the tool through the Rovo
+  agent returned the expected result (USD 20 + USD 30 spent: allowed,
+  projected USD 50, remaining USD 50).
 - [x] Installation link created and pasted above (Sharing with anyone, Jira, 18 Nov 2026).
 - [x] Demo video recorded, uploaded publicly to YouTube, link pasted above.
 - [x] Owner reviewed this draft and the Devpost form, then submitted (20 Nov 2026, submission ID 1313154, https://devpost.com/software/flitzr-finance-guardian-for-atlassian).
