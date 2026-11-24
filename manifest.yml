@@ -1,18 +1,44 @@
 app:
   id: ari:cloud:ecosystem::app/0a82f923-7358-413b-b86f-0f88a9e53a47
+  rovo:
+    tag: flitzr
+    description: Evaluate proposed spend against demo limits and review recent checks
+    keywords:
+      - finance-policy
+      - spend-check
+      - limits
   runtime:
     name: nodejs24.x
 modules:
   function:
     - key: evaluate-finance-policy
-      handler: index.evaluateFinancePolicy
+      handler: index.evaluateFinancePolicyAction
+    - key: get-limits-fn
+      handler: index.getLimits
+    - key: set-limits-fn
+      handler: index.setLimits
+    - key: list-recent-fn
+      handler: index.listRecentEvaluations
+    - key: panel-resolver
+      handler: index.handler
+  jira:issuePanel:
+    - key: flitzr-finance-panel
+      resource: main
+      resolver:
+        function: panel-resolver
+      render: native
+      title: Flitzr Finance Guardian
+      # Generic issue-panel icon from the Forge docs example; replace with a
+      # self-hosted Flitzr icon later (see ticket 04 docs).
+      icon: https://developer.atlassian.com/platform/forge/images/icons/issue-panel-icon.svg
   action:
     - key: evaluate-finance-policy-action
       name: Evaluate finance policy
       function: evaluate-finance-policy
       actionVerb: GET
-      description: Deterministically evaluate a proposed financial action against demo
-        spending limits. Evaluation only; never signs, submits, transfers, or
+      description: Deterministically evaluate a proposed financial action against the
+        installation's spending limits (demo defaults USD 25 single, USD 100
+        daily). Evaluation only; never signs, submits, transfers, or
         executes funds.
       inputs:
         amountUsd:
@@ -30,6 +56,41 @@ modules:
           type: string
           required: false
           description: Short description of the proposed financial action.
+    - key: get-limits
+      name: Get finance limits
+      function: get-limits-fn
+      actionVerb: GET
+      description: Returns the current max single expense and max daily spend for
+        this installation.
+    - key: set-limits
+      name: Set finance limits
+      function: set-limits-fn
+      actionVerb: UPDATE
+      description: Changes the max single expense and/or max daily spend for this
+        installation. Limits are shared by the whole installation.
+      inputs:
+        maxSingleUsd:
+          title: Max single expense (USD)
+          type: number
+          required: false
+          description: New maximum for a single proposed action in US dollars.
+        maxDailyUsd:
+          title: Max daily spend (USD)
+          type: number
+          required: false
+          description: New maximum projected daily spend in US dollars.
+    - key: list-recent-evaluations
+      name: List recent evaluations
+      function: list-recent-fn
+      actionVerb: GET
+      description: Returns the most recent finance policy evaluations for this
+        installation, newest first (at most 20).
+      inputs:
+        limit:
+          title: How many evaluations to return
+          type: integer
+          required: false
+          description: Number of recent evaluations to return, at most 20.
   rovo:agent:
     - key: flitzr-finance-guardian
       name: Flitzr Finance Guardian
@@ -46,23 +107,43 @@ modules:
         with the confirmed values. Explain the deterministic result and remaining
         demo budget.
 
-        Demo policy: maximum single action USD 25; maximum daily budget USD 100.
-        Above USD 25 requires human approval. Projected daily spend above USD 100
-        is blocked. These are demo defaults, not live account balances.
+        Demo policy: the installation's spending limits apply, with demo defaults
+        of maximum single action USD 25 and maximum daily budget USD 100 until a
+        teammate changes them. Above the single limit requires human approval.
+        Projected daily spend above the daily limit is blocked. These are demo
+        defaults, not live account balances.
 
-        This agent and action are read-only. Never sign, submit, transfer, or
-        broadcast a transaction. Never claim funds moved. Never request passwords,
-        private keys, seed phrases, or payment-card details.
+        Use Get finance limits to report the current limits. Use Set finance
+        limits when a teammate asks to change them; confirm the new limits back
+        to the user. Limits are shared by the whole installation.
+
+        Every evaluation is recorded in a short history (the most recent 20).
+        Use List recent evaluations when a teammate asks what was checked
+        recently.
+
+        This agent evaluates only. Never sign, submit, transfer, or broadcast a
+        transaction. Never claim funds moved. Never request passwords, private
+        keys, seed phrases, or payment-card details.
       conversationStarters:
         - Check whether a proposed expense fits our demo budget.
         - Review the budget impact of this Jira task.
         - Explain why a proposed spend needs approval.
+        - What are our current spending limits?
       actions:
         - evaluate-finance-policy-action
+        - get-limits
+        - set-limits
+        - list-recent-evaluations
   rovo:mcp:
     - key: flitzr-finance-mcp
       name: Flitzr Finance Controls
       tools:
         - evaluate-finance-policy-action
+        - get-limits
+        - list-recent-evaluations
 permissions:
-  scopes: []
+  scopes:
+    - storage:app
+resources:
+  - key: main
+    path: src/frontend/index.jsx
