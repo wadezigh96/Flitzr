@@ -8,8 +8,10 @@ Flitzr Finance Guardian is an Atlassian Forge prototype for reviewing operationa
 
 ## Included implementation
 
-- Forge manifest with a Rovo agent, deterministic action, and Rovo MCP declaration.
-- Input validation and policy evaluation in `src/index.js`.
+- Forge manifest with a Rovo agent, four deterministic actions, a Jira
+  issue panel (UI Kit), and a Rovo MCP declaration.
+- Input validation and policy evaluation in `src/index.js`; limits
+  and history in Forge storage via `src/storage.js`.
 - Automated tests using Node.js's built-in test runner.
 - Documentation for architecture, demo, security, and readiness.
 - Audit report (`docs/AUDIT-2026-11-18.md`) and Devpost submission draft
@@ -20,9 +22,17 @@ The Rovo MCP module is a Preview capability. Its availability and behavior must 
 
 ## Explicit limitations
 
-The prototype uses hard-coded demo thresholds (USD 25 per expense and USD 100 daily). It does not fetch live financial balances, connect to payment accounts or wallets, sign or submit transactions, transfer funds, or prove that an expense was paid.
+The demo policy uses default thresholds (USD 25 per expense and
+USD 100 daily) that an installation can change through the Rovo agent.
+It does not fetch live financial balances, connect to payment accounts
+or wallets, sign or submit transactions, transfer funds, or prove that
+an expense was paid.
 
 ## Remaining work
+
+Note: this list is stale (it still shows unchecked items that were
+completed later, e.g. the test-site install and the MCP verification);
+the current status lives in `docs/SUBMISSION.md`.
 
 - [x] Forge CLI installed (15.1.0, local install, 18 Nov 2026) and
   `forge lint` passes with no issues (18 Nov 2026).

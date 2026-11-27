@@ -9,5 +9,12 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "dependencies": {
+    "@forge/bridge": "^7.4.0",
+    "@forge/kvs": "^2.1.3",
+    "@forge/react": "^12.6.0",
+    "@forge/resolver": "^2.0.2",
+    "react": "^18.3.1"
   }
 }

@@ -30,6 +30,15 @@ The form was corrected to match this draft on 25 Nov 2026 (6 fields
 replaced, verified on the public page; submission still SUBMITTED, 5/5
 steps).
 
+Note (25 Nov 2026, upgrade): configurable limits, evaluation history,
+and a Jira issue panel are implemented on branch
+`feat/configurable-limits-history-panel` (tickets 01–04) and are NOT
+yet deployed. The Devpost drafts for the upgrade live in
+`.scratch/configurable-limits-history-panel/DEVPOST-DRAFTS.md` and
+must only be published after the upgrade is deployed and verified
+live (ticket 05). The sections below already describe the upgraded
+app as shipped on that branch.
+
 ## Title
 
 Flitzr — Finance Guardian for Atlassian
@@ -47,11 +56,13 @@ front of them.
 ## Bonus prizes
 
 - **Best Agents — Rovo/Assignable agents.** Flitzr declares a
-  `rovo:agent` module ("Flitzr Finance Guardian") with a dedicated
-  policy-checking action.
+  `rovo:agent` module ("Flitzr Finance Guardian") with four actions:
+  evaluate the policy, read the limits, change the limits, and list
+  recent evaluations.
 - **Best app with Atlassian MCP.** Flitzr declares a `rovo:mcp` module
-  ("Flitzr Finance Controls") exposing the same policy action as a tool
-  for custom agents in Rovo Studio and for MCP-compatible AI clients.
+  ("Flitzr Finance Controls") exposing the three read-only tools
+  (evaluate, get-limits, list-recent) for custom agents in Rovo
+  Studio and for MCP-compatible AI clients.
 
 Note: the Devpost form allows only one bonus prize choice. Best Agents
 was selected on 20 November 2026; the MCP module is still described in
@@ -66,16 +77,25 @@ A Rovo agent, Flitzr Finance Guardian, talks through a proposed expense
 in Jira or Confluence: it identifies the amount in USD and the confirmed
 spend already used today, and asks the user when either value is missing
 or ambiguous instead of inventing financial amounts. It then invokes a
-deterministic Forge action that evaluates the proposal against
-transparent demo guardrails: a maximum single expense of USD 25 and a
-maximum projected daily spend of USD 100. The action returns a
+deterministic Forge action that evaluates the proposal against the
+installation's spending limits: a maximum single expense and a maximum
+projected daily spend, configurable per installation (demo defaults
+USD 25 and USD 100 until a teammate changes them). The action returns a
 reproducible decision: within both limits, human approval required
-(above USD 25), or blocked (projected daily spend above USD 100), plus
-the projected spend and remaining demo budget.
+(above the single limit), or blocked (projected daily spend above the
+daily limit), plus the projected spend and remaining demo budget.
 
-The same policy action is exposed through a Rovo MCP module, so custom
-agents in Rovo Studio and MCP-compatible AI clients can use the same
-guardrails.
+Every successful evaluation is recorded in a short history (the most
+recent 20, newest first), which teammates can ask the agent about.
+The same check is available from a Flitzr panel on Jira issues, where
+a user enters an amount and spent-today, sees the decision, and sees
+the same history.
+
+The read-only tools (evaluate, get-limits, list-recent) are exposed
+through a Rovo MCP module, so custom agents in Rovo Studio and
+MCP-compatible AI clients can use the same guardrails. Changing limits
+stays with the Rovo agent by design: set-limits is not exposed
+through MCP.
 
 Flitzr is evaluation-only by design. It does not connect to wallets or
 bank accounts, fetch live balances, sign transactions, submit orders,
@@ -86,14 +106,18 @@ for human review, not payment authorization.
 
 Built on Atlassian Forge and integrated with Rovo:
 
-- `manifest.yml` declares a Forge function, a Rovo `action`, a
-  `rovo:agent`, and a `rovo:mcp` module.
-- The action runs a deterministic policy evaluator (`src/index.js`)
-  with strict input validation and 14 automated tests
+- `manifest.yml` declares Forge functions, four Rovo `action` modules
+  (evaluate, get-limits, set-limits, list-recent-evaluations), a
+  `rovo:agent`, a `rovo:mcp` module, and a `jira:issuePanel` module
+  (UI Kit, `@forge/react`, no bundler).
+- The actions run a deterministic policy evaluator (`src/index.js`)
+  with strict input validation and 38 automated tests
   (`npm test`, Node.js built-in test runner).
-- No Atlassian API scopes are required: the app makes no API calls and
-  reads no Jira or Confluence data beyond the issue key passed in
-  context.
+- Limits and history live in the Forge Key-Value Store (`@forge/kvs`,
+  `src/storage.js`), scoped per installation; the manifest carries
+  the `storage:app` scope. No Jira or Confluence API scopes are
+  required: the app makes no Atlassian API calls and reads no Jira or
+  Confluence data beyond the issue key passed in context.
 
 ## Installation link for judges
 
@@ -118,13 +142,27 @@ version: production 2.0.0, deployed 18 November 2026.
      daily spend would be USD 101.
 5. Try an invalid case, for example a missing amount: the agent asks
    for the confirmed values instead of guessing.
-6. To try the MCP tools in Rovo Studio, use the "Flitzr Finance
+6. Ask the agent "What are our current spending limits?" (demo
+   defaults USD 25 single, USD 100 daily), then "Set the single limit
+   to USD 50 and the daily limit to USD 200" and re-run the USD 30 +
+   USD 20 case: it is now allowed instead of needing approval, because
+   the new limits apply. Ask "What did we check recently?" to see the
+   evaluation history. Set the limits back to USD 25 and USD 100
+   afterwards so the demo cases above keep working.
+7. On a Jira issue, open the Flitzr Finance Guardian panel (in the
+   issue ••• menu) and run the same USD 20 + USD 30 check: it returns
+   the same allowed decision, and the panel lists the recent
+   evaluations.
+8. To try the MCP tools in Rovo Studio, use the "Flitzr Finance
    Controls" MCP server exposed by the installed app. External MCP
    exposure is disabled by default; a site or org admin enables it per
    installation under Apps > Sites > your site > Connected apps. The
    MCP endpoint is `https://mcp.atlassian.com/forge/0a82f923-7358-413b-b86f-0f88a9e53a47`.
-7. Note: the USD 25 and USD 100 limits are hard-coded demonstration
-   values, not live balances or customer-configured policies.
+   The MCP tools are the read-only ones (evaluate, get-limits,
+   list-recent); set-limits is available through the Rovo agent only.
+9. Note: the USD 25 and USD 100 figures are the demo defaults, not
+   live balances. An installation can change them through the Rovo
+   agent; until it does, the defaults apply.
 
 ## Demo video
 
@@ -159,3 +197,14 @@ module. Paste this link into the Devpost form.
 - [x] Installation link created and pasted above (Sharing with anyone, Jira, 18 Nov 2026).
 - [x] Demo video recorded, uploaded publicly to YouTube, link pasted above.
 - [x] Owner reviewed this draft and the Devpost form, then submitted (20 Nov 2026, submission ID 1313154, https://devpost.com/software/flitzr-finance-guardian-for-atlassian).
+
+## Upgrade checklist (25 Nov 2026, ticket 05 — not done)
+
+- [ ] `forge lint` passes on branch `feat/configurable-limits-history-panel`.
+- [ ] Upgrade deployed to development and production.
+- [ ] Rovo agent verified end to end on the demo site: configurable
+  limits (set, then evaluate uses them), history (list-recent),
+  panel (same decisions as the agent).
+- [ ] Devpost drafts in
+  `.scratch/configurable-limits-history-panel/DEVPOST-DRAFTS.md`
+  published to the Devpost form and verified on the public page.
